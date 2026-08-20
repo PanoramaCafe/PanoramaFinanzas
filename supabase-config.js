@@ -1,0 +1,1 @@
+window.PANORAMA_SUPABASE={url:"https://dtmhffgpwxzdncbuoohb.supabase.co",key:"sb_publishable_S_wZkfLNvx0mnHBLGHcfgg_Q_SkycdW"};
