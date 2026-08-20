@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Panorama Café — Finanzas PF-V1-036</title>
+<title>Panorama Café — Finanzas PF-V1-037</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f1ec;color:#272421}
 button,input,select,textarea{font:inherit}button{cursor:pointer}.app{display:flex;min-height:100vh}
@@ -41,7 +41,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.app{display:fle
  .panelHeader{align-items:flex-start;flex-direction:column}
 }
 
-/* PF-V1-036 — corrección de ancho, desbordamiento y navegación */
+/* PF-V1-037 — corrección de ancho, desbordamiento y navegación */
 html,body{max-width:100%;overflow-x:hidden}
 .content{min-width:0}
 .view{min-width:0}
@@ -56,7 +56,7 @@ html,body{max-width:100%;overflow-x:hidden}
  .moduleHeader .btn{align-self:flex-start}
 }
 
-/* PF-V1-036 — vistas administrativas dentro del contenedor principal */
+/* PF-V1-037 — vistas administrativas dentro del contenedor principal */
 .content{box-sizing:border-box;overflow-x:hidden}
 .view{width:100%;max-width:100%;box-sizing:border-box}
 .moduleHeader,.moduleStats,.modulePanel{box-sizing:border-box;max-width:100%}
@@ -69,7 +69,7 @@ html,body{max-width:100%;overflow-x:hidden}
 .fieldHelp{font-size:12px;color:#77716a;margin-top:6px;line-height:1.4}.field.full{grid-column:1/-1}
 .filterDate{display:flex;align-items:center;gap:6px;font-size:12px;color:#6f6a64}.filterDate .input{width:145px}
 
-/* PF-V1-036 — barra lateral desplazable */
+/* PF-V1-037 — barra lateral desplazable */
 .sidebar{
   overflow-y:auto;
   overflow-x:hidden;
@@ -87,7 +87,7 @@ html,body{max-width:100%;overflow-x:hidden}
   }
 }
 
-/* PF-V1-036 — sidebar compacta y contraíble */
+/* PF-V1-037 — sidebar compacta y contraíble */
 .sidebar{
   width:238px;
   min-width:238px;
@@ -203,9 +203,49 @@ html,body{max-width:100%;overflow-x:hidden}
     box-shadow:0 2px 8px rgba(0,0,0,.18);
     cursor:pointer;
   }
-  .sidebar:not(.is-collapsed) ~ .mobileSidebarToggle,
-  body:has(.sidebar:not(.is-collapsed)) .mobileSidebarToggle{
-    display:none;
+  .mobileSidebarToggle{display:none !important;}
+  .sidebar.is-collapsed ~ .mobileSidebarToggle{display:flex !important;}
+}
+
+/* PF-V1-037 — corrección definitiva de navegación móvil */
+@media(max-width:900px){
+  .sidebar{
+    width:280px !important;
+    min-width:280px !important;
+    max-width:82vw !important;
+    padding:20px 14px !important;
+    transform:translateX(0) !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+  }
+  .sidebar.is-collapsed{
+    width:280px !important;
+    min-width:280px !important;
+    transform:translateX(-105%) !important;
+  }
+  .sidebar .brandMain{
+    display:block !important;
+  }
+  .sidebar .navText{
+    display:inline !important;
+    white-space:nowrap !important;
+  }
+  .sidebar .nav button{
+    justify-content:flex-start !important;
+    text-align:left !important;
+    min-height:44px !important;
+    padding:10px 13px !important;
+  }
+  .sidebar .navIcon{
+    flex:0 0 24px !important;
+  }
+  .sidebar .sidebarToggle{
+    display:flex !important;
+  }
+  .content{
+    margin-left:0 !important;
+    width:100% !important;
+    padding:20px !important;
   }
 }
 </style>
@@ -216,7 +256,7 @@ html,body{max-width:100%;overflow-x:hidden}
 <div id="sidebarOverlay" class="sidebarOverlay"></div>
 <aside class="sidebar" id="appSidebar">
   <div class="brand">
-    <div class="brandMain"><strong>Panorama Café</strong><small>FINANZAS · PF-V1-036</small></div>
+    <div class="brandMain"><strong>Panorama Café</strong><small>FINANZAS · PF-V1-037</small></div>
     <button type="button" class="sidebarToggle" id="sidebarToggle" aria-label="Cerrar barra lateral" title="Cerrar barra lateral"><span class="hamburger">☰</span></button>
   </div>
   <nav class="nav" aria-label="Navegación principal">
@@ -237,7 +277,7 @@ html,body{max-width:100%;overflow-x:hidden}
 </aside>
 
 <main class="content">
-<header class="header"><div><h1 id="title">Posición financiera</h1><div class="muted">Control del dinero real de Panorama Café</div></div><div class="version">PF-V1-036</div></header>
+<header class="header"><div><h1 id="title">Posición financiera</h1><div class="muted">Control del dinero real de Panorama Café</div></div><div class="version">PF-V1-037</div></header>
 
 <section id="dashboard" class="view active">
   <div class="notice">Loyverse sigue siendo el punto de venta. Esta app controla el dinero real, compromisos y movimientos.</div>
@@ -1492,7 +1532,7 @@ function renderDataStatus(){
  '<div class="row"><div><b>Cierres POS</b></div><strong>'+db.posCloses.length+'</strong></div>';
 }
 function exportData(){
- const payload={app:'Panorama Finanzas',version:'PF-V1-036',exportedAt:new Date().toISOString(),data:db};
+ const payload={app:'Panorama Finanzas',version:'PF-V1-037',exportedAt:new Date().toISOString(),data:db};
  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
  const url=URL.createObjectURL(blob),a=document.createElement('a');
  a.href=url;a.download='Panorama_Finanzas_Backup_'+today()+'.json';a.click();URL.revokeObjectURL(url);
@@ -1541,7 +1581,7 @@ document.getElementById('filterMoves').addEventListener('change',renderMoves);
 document.getElementById('resultFrom').style.display='none';document.getElementById('resultTo').style.display='none';renderAll();
 
 
-// PF-V1-036 — handlers de Nómina y Pagos fijos dentro del mismo scope
+// PF-V1-037 — handlers de Nómina y Pagos fijos dentro del mismo scope
 document.addEventListener('click',function(ev){
  const t=ev.target.closest?.('#newPayrollEmployee,#newPayrollEmployee2,#newPayrollPayment,#newFixedPayment');
  if(!t)return;
@@ -1593,8 +1633,8 @@ const mobileSidebarToggle=document.getElementById('mobileSidebarToggle');
 const sidebarOverlay=document.getElementById('sidebarOverlay');
 if(sidebar){
   const isMobile=()=>window.matchMedia('(max-width:900px)').matches;
-  const setSidebar=(collapsed)=>{
-    sidebar.classList.toggle('is-collapsed',collapsed);
+  const applySidebar=(collapsed)=>{
+    sidebar.classList.toggle('is-collapsed',!!collapsed);
     const label=collapsed?'Abrir barra lateral':'Cerrar barra lateral';
     if(sidebarToggle){
       sidebarToggle.innerHTML='<span class="hamburger">☰</span>';
@@ -1602,21 +1642,25 @@ if(sidebar){
       sidebarToggle.title=label;
     }
     if(mobileSidebarToggle){
-      mobileSidebarToggle.style.display=isMobile()&&collapsed?'flex':'none';
-      mobileSidebarToggle.setAttribute('aria-label','Abrir barra lateral');
-      mobileSidebarToggle.title='Abrir barra lateral';
+      mobileSidebarToggle.style.display=(isMobile()&&collapsed)?'flex':'none';
     }
-    if(sidebarOverlay)sidebarOverlay.classList.toggle('show',isMobile()&&!collapsed);
-    if(!isMobile())localStorage.setItem('panorama_sidebar_collapsed',collapsed?'1':'0');
+    if(sidebarOverlay){
+      sidebarOverlay.classList.toggle('show',isMobile()&&!collapsed);
+    }
+    if(!isMobile()){
+      localStorage.setItem('panorama_sidebar_collapsed',collapsed?'1':'0');
+    }
   };
-  const initialCollapsed=isMobile()?true:localStorage.getItem('panorama_sidebar_collapsed')==='1';
-  setSidebar(initialCollapsed);
-  sidebarToggle?.addEventListener('click',()=>setSidebar(!sidebar.classList.contains('is-collapsed')));
-  mobileSidebarToggle?.addEventListener('click',()=>setSidebar(false));
-  sidebarOverlay?.addEventListener('click',()=>{if(isMobile())setSidebar(true)});
+  applySidebar(isMobile()?true:localStorage.getItem('panorama_sidebar_collapsed')==='1');
+  sidebarToggle?.addEventListener('click',()=>applySidebar(!sidebar.classList.contains('is-collapsed')));
+  mobileSidebarToggle?.addEventListener('click',()=>applySidebar(false));
+  sidebarOverlay?.addEventListener('click',()=>{if(isMobile())applySidebar(true)});
   window.addEventListener('resize',()=>{
-    if(isMobile()) setSidebar(true);
-    else setSidebar(localStorage.getItem('panorama_sidebar_collapsed')==='1');
+    if(isMobile()){
+      applySidebar(sidebar.classList.contains('is-collapsed'));
+    }else{
+      applySidebar(localStorage.getItem('panorama_sidebar_collapsed')==='1');
+    }
   });
 }
 })();
