@@ -1,9 +1,9 @@
 <!doctype html>
 <html lang="es">
-<head><link rel="manifest" href="./manifest.json"><meta name="theme-color" content="#2d2926"><link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Panorama Café — Finanzas PF-V1-018</title>
+<title>Panorama Café — Finanzas PF-V1-020</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f1ec;color:#272421}
 button,input,select,textarea{font:inherit}button{cursor:pointer}.app{display:flex;min-height:100vh}
@@ -68,6 +68,7 @@ html,body{max-width:100%;overflow-x:hidden}
 .tableWrap{width:100%;max-width:100%;overflow-x:auto}
 .table{min-width:0}
 
+.fieldHelp{font-size:12px;color:#77716a;margin-top:6px;line-height:1.4}.field.full{grid-column:1/-1}
 </style>
 </head>
 <body>
@@ -534,7 +535,12 @@ function renderPayroll(){
  if(total)total.textContent=money((db.payrollPeriods||[]).reduce((s,x)=>s+Number(x.amount||0),0));
 }
 
-function openPayrollEmployee(id){const e=id?db.payrollEmployees.find(x=>x.id===id):null;openModal('<h2>'+(e?'Editar empleado':'Nuevo empleado')+'</h2><form id="payrollEmployeeForm"><div class="formGrid"><div class="field"><label>Nombre</label><input class="input" name="name" value="'+esc(e?.name||'')+'" required></div><div class="field"><label>Pago habitual</label><input class="input" name="pay" type="number" min="0" step="0.01" value="'+Number(e?.defaultPay||0)+'" required></div></div><div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Guardar</button></div></form>');document.getElementById('cancelModal').addEventListener('click',closeModal);document.getElementById('payrollEmployeeForm').addEventListener('submit',ev=>{ev.preventDefault();const f=new FormData(ev.target);if(e){e.name=f.get('name').trim();e.defaultPay=Number(f.get('pay'))}else db.payrollEmployees.push({id:uid(),name:f.get('name').trim(),defaultPay:Number(f.get('pay')),active:true});save();closeModal()})}
+function openPayrollEmployee(id){
+ const e=id?db.payrollEmployees.find(x=>x.id===id):null;
+ openModal('<h2>'+(e?'Editar empleado':'Nuevo empleado')+'</h2><form id="payrollEmployeeForm" data-employee-id="'+esc(e?.id||'')+'"><div class="formGrid"><div class="field"><label>Nombre</label><input class="input" name="name" value="'+esc(e?.name||'')+'" required></div><div class="field"><label>Pago habitual</label><input class="input" name="pay" type="number" min="0" step="0.01" value="'+Number(e?.defaultPay||0)+'" required></div></div><div class="modalActions"><button type="button" class="btn" id="cancelPayrollEmployee">Cancelar</button><button type="submit" class="btn primary">Guardar</button></div></form>');
+ document.getElementById('cancelPayrollEmployee')?.addEventListener('click',closeModal);
+}
+
 function openPayrollPayment(){const em=db.payrollEmployees;if(!em.length){alert('Primero agrega un empleado.');return}openModal('<h2>Registrar pago de nómina</h2><form id="payrollPaymentForm"><div class="formGrid"><div class="field"><label>Empleado</label><select class="select" name="employee">'+em.map(e=>'<option value="'+e.id+'">'+esc(e.name)+'</option>').join('')+'</select></div><div class="field"><label>Importe</label><input class="input" name="amount" type="number" min="0.01" step="0.01" required></div><div class="field"><label>Cuenta / dinero</label><select class="select" name="account">'+accountOptions()+'</select></div><div class="field"><label>Fecha</label><input class="input" name="date" type="date" value="'+today()+'" required></div><div class="field"><label>Origen</label><select class="select" name="origin"><option value="local">Local / excepción</option><option value="external">App de Nómina</option></select></div><div class="field"><label>Referencia externa</label><input class="input" name="externalId"></div></div><div class="notice">Cuando exista la integración, el pago podrá llegar desde la app de Nómina sin recapturarlo.</div><div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Pagar</button></div></form>');document.getElementById('cancelModal').addEventListener('click',closeModal);document.getElementById('payrollPaymentForm').addEventListener('submit',ev=>{ev.preventDefault();const f=new FormData(ev.target),e=em.find(x=>x.id===f.get('employee')),amount=Number(f.get('amount')),acc=getAccount(f.get('account'));if(!e||amount<=0||!acc||acc.balance<amount){alert('Revisa los datos y el saldo.');return}acc.balance-=amount;const rec={id:uid(),created:Date.now(),employeeId:e.id,employeeName:e.name,amount,accountId:acc.id,date:f.get('date'),origin:f.get('origin'),externalId:f.get('externalId')||''};db.payrollPeriods.push(rec);db.moves.push({id:uid(),created:Date.now(),origin:'nomina',externalId:rec.externalId,sourceRecordId:rec.id,type:'salida',date:rec.date,amount,concept:'Nómina — '+e.name,category:'nomina',from:acc.id,to:null,account:acc.id,note:'Pago de nómina'});save();closeModal()})}
 
 function renderFixedPayments(){
@@ -547,9 +553,15 @@ function renderFixedPayments(){
  if(paid)paid.textContent=money(rows.filter(x=>x.status==='pagado').reduce((s,x)=>s+Number(x.amount||0),0));
 }
 
-function openFixedPayment(id){const x=id?db.fixedPayments.find(a=>a.id===id):null;openModal('<h2>'+(x?'Pago fijo':'Nuevo pago fijo')+'</h2><form id="fixedPaymentForm"><div class="formGrid"><div class="field"><label>Concepto</label><input class="input" name="concept" value="'+esc(x?.concept||'')+'" placeholder="Ej. Internet" required></div><div class="field"><label>Importe</label><input class="input" name="amount" type="number" min="0.01" step="0.01" value="'+Number(x?.amount||0)+'" required></div><div class="field"><label>Fecha</label><input class="input" name="date" type="date" value="'+esc(x?.date||today())+'" required></div><div class="field"><label>Estado</label><select class="select" name="status"><option value="pendiente">Pendiente</option><option value="pagado">Pagado</option></select></div><div class="field"><label>Cuenta / dinero</label><select class="select" name="account">'+accountOptions()+'</select></div></div><div class="notice">Pendiente no genera movimiento. Pagado sí genera una salida y descuenta la cuenta.</div><div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Guardar</button></div></form>');const f=document.getElementById('fixedPaymentForm');if(x){f.querySelector('[name="status"]').value=x.status;f.querySelector('[name="account"]').value=x.accountId||''}document.getElementById('cancelModal').addEventListener('click',closeModal);f.addEventListener('submit',ev=>{ev.preventDefault();const d=new FormData(f),amount=Number(d.get('amount')),status=d.get('status'),acc=getAccount(d.get('account'));if(amount<=0){alert('Importe inválido.');return}if(status==='pagado'&&(!acc||acc.balance<amount)){alert('Saldo insuficiente.');return}if(x){if(x.status!=='pagado'&&status==='pagado'){acc.balance-=amount;db.moves.push({id:uid(),created:Date.now(),origin:'pagos_fijos',sourceRecordId:x.id,type:'salida',date:d.get('date'),amount,concept:d.get('concept'),category:'pagos_fijos',from:acc.id,to:null,account:acc.id,note:''})}x.concept=d.get('concept');x.amount=amount;x.date=d.get('date');x.status=status;x.accountId=status==='pagado'?acc.id:null}else{const r={id:uid(),created:Date.now(),concept:d.get('concept'),amount,date:d.get('date'),status,accountId:status==='pagado'?acc.id:null};db.fixedPayments.push(r);if(status==='pagado'){acc.balance-=amount;db.moves.push({id:uid(),created:Date.now(),origin:'pagos_fijos',sourceRecordId:r.id,type:'salida',date:r.date,amount,concept:r.concept,category:'pagos_fijos',from:acc.id,to:null,account:acc.id,note:''})}}save();closeModal()})}
-document.getElementById('newPayrollEmployee')?.addEventListener('click',()=>openPayrollEmployee());document.getElementById('newPayrollPayment')?.addEventListener('click',openPayrollPayment);document.getElementById('newFixedPayment')?.addEventListener('click',()=>openFixedPayment());
-document.getElementById('newPayrollEmployee2')?.addEventListener('click',()=>openPayrollEmployee());
+function openFixedPayment(id){
+ const x=id?db.fixedPayments.find(a=>a.id===id):null;
+ openModal('<h2>'+(x?'Editar pago fijo':'Nuevo pago fijo')+'</h2><form id="fixedPaymentForm" data-fixed-id="'+esc(x?.id||'')+'"><div class="formGrid"><div class="field"><label>Concepto</label><input class="input" name="concept" value="'+esc(x?.concept||'')+'" placeholder="Ej. Internet" required></div><div class="field"><label>Importe</label><input class="input" name="amount" type="number" min="0.01" step="0.01" value="'+Number(x?.amount||0)+'" required></div><div class="field"><label>Fecha</label><input class="input" name="date" type="date" value="'+esc(x?.date||today())+'" required></div><div class="field"><label>Cuenta / dinero</label><select class="select" name="account">'+accountOptions()+'</select></div><div class="field full"><label>Estado</label><select class="select" name="status"><option value="pendiente">Pendiente</option><option value="pagado">Pagado</option></select><div class="fieldHelp">Pendiente: registra la obligación. Pagado: descuenta la cuenta y genera el movimiento.</div></div><div class="field full"><label>Nota <span class="muted">(opcional)</span></label><input class="input" name="note" value="'+esc(x?.note||'')+'" placeholder="Ej. pago mensual"></div></div><div class="modalActions"><button type="button" class="btn" id="cancelFixedPayment">Cancelar</button><button type="submit" class="btn primary">Guardar</button></div></form>');
+ const form=document.getElementById('fixedPaymentForm'); if(!form)return;
+ if(x){form.querySelector('[name="status"]').value=x.status||'pendiente';form.querySelector('[name="account"]').value=x.accountId||''}
+ const sync=()=>{form.querySelector('[name="account"]').disabled=form.querySelector('[name="status"]').value!=='pagado'};form.querySelector('[name="status"]').addEventListener('change',sync);sync();
+ document.getElementById('cancelFixedPayment')?.addEventListener('click',closeModal);
+}
+
 function renderProviders(){
  const body=document.getElementById('providersBody');if(!body)return;
  body.innerHTML=(db.providers||[]).map(p=>'<tr><td><b>'+esc(p.name)+'</b></td><td>'+money(providerPurchaseTotal(p.id))+'</td><td>'+money(providerPaidTotal(p.id))+'</td><td class="'+(providerPending(p.id)?'red':'green')+'"><b>'+money(providerPending(p.id))+'</b></td><td><div class="actions"><button class="btn primary" data-provider-purchase="'+p.id+'">＋ Compra</button><button class="btn" data-provider-payment="'+p.id+'">＋ Abonar</button><button class="btn" data-view-provider="'+p.id+'">Ver</button><button class="btn" data-edit-provider="'+p.id+'">Editar</button><button class="btn danger" data-del-provider="'+p.id+'">Eliminar</button></div></td></tr>').join('')||'<tr><td colspan="5"><div class="empty">No hay proveedores.</div></td></tr>';
@@ -1172,5 +1184,49 @@ document.getElementById('filterMoves').addEventListener('change',renderMoves);
 document.getElementById('resultFrom').style.display='none';document.getElementById('resultTo').style.display='none';renderAll();
 })();
 </script>
-<script>if("serviceWorker" in navigator && location.protocol!=="file:"){addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js"))}</script></body>
+<script>
+/* PF_V1_019_BUTTONS */
+document.addEventListener('click',function(ev){
+ const t=ev.target.closest?.('#newPayrollEmployee,#newPayrollEmployee2,#newPayrollPayment,#newFixedPayment');
+ if(!t)return;
+ if(t.id==='newPayrollEmployee'||t.id==='newPayrollEmployee2'){openPayrollEmployee();return}
+ if(t.id==='newPayrollPayment'){openPayrollPayment();return}
+ if(t.id==='newFixedPayment'){openFixedPayment();return}
+});
+</script>
+<script>
+/* PF_V1_020_SUBMIT_HANDLERS */
+document.addEventListener('submit',function(ev){
+ const form=ev.target;
+ if(form.id==='payrollEmployeeForm'){
+  ev.preventDefault();
+  const d=new FormData(form),name=String(d.get('name')||'').trim(),pay=Number(d.get('pay'));
+  if(!name){alert('Escribe el nombre del empleado.');return}
+  if(!Number.isFinite(pay)||pay<0){alert('El pago habitual no es válido.');return}
+  db.payrollEmployees=db.payrollEmployees||[];
+  const emp=form.dataset.employeeId?db.payrollEmployees.find(x=>x.id===form.dataset.employeeId):null;
+  if(emp){emp.name=name;emp.defaultPay=pay;emp.active=true}else db.payrollEmployees.push({id:uid(),name,defaultPay:pay,active:true});
+  save();renderPayroll();closeModal();return;
+ }
+ if(form.id==='fixedPaymentForm'){
+  ev.preventDefault();
+  const d=new FormData(form),concept=String(d.get('concept')||'').trim(),amount=Number(d.get('amount')),date=String(d.get('date')||''),status=String(d.get('status')||'pendiente'),note=String(d.get('note')||'').trim(),accountId=String(d.get('account')||''),acc=getAccount(accountId);
+  if(!concept){alert('Escribe el concepto.');return}
+  if(!Number.isFinite(amount)||amount<=0){alert('El importe no es válido.');return}
+  if(!date){alert('Selecciona una fecha.');return}
+  if(status==='pagado'&&(!acc||Number(acc.balance)<amount)){alert('Selecciona una cuenta con saldo suficiente.');return}
+  db.fixedPayments=db.fixedPayments||[];
+  const x=form.dataset.fixedId?db.fixedPayments.find(a=>a.id===form.dataset.fixedId):null;
+  if(x){
+   if(x.status!=='pagado'&&status==='pagado'){acc.balance-=amount;db.moves.push({id:uid(),created:Date.now(),origin:'pagos_fijos',sourceRecordId:x.id,type:'salida',date,amount,concept,category:'pagos_fijos',from:acc.id,to:null,account:acc.id,note})}
+   x.concept=concept;x.amount=amount;x.date=date;x.status=status;x.accountId=status==='pagado'?accountId:null;x.note=note;
+  }else{
+   const r={id:uid(),created:Date.now(),concept,amount,date,status,accountId:status==='pagado'?accountId:null,note};db.fixedPayments.push(r);
+   if(status==='pagado'){acc.balance-=amount;db.moves.push({id:uid(),created:Date.now(),origin:'pagos_fijos',sourceRecordId:r.id,type:'salida',date,amount,concept,category:'pagos_fijos',from:acc.id,to:null,account:acc.id,note})}
+  }
+  save();renderFixedPayments();closeModal();
+ }
+});
+</script>
+</body>
 </html>
