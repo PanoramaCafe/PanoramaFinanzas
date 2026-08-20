@@ -717,6 +717,14 @@ button, input, select, textarea { max-width:100%; }
 
   <div class="panel modulePanel">
     <div class="panelHeader">
+      <div><h2>Solicitudes pendientes desde Personal</h2><p class="muted">Al confirmar un pago se descuenta la cuenta elegida, se registra el movimiento y se marca como pagado en Panorama Core.</p></div>
+      <button class="btn" type="button" id="refreshCorePayroll">↻ Actualizar</button>
+    </div>
+    <div id="corePayrollRequests"></div>
+  </div>
+
+  <div class="panel modulePanel">
+    <div class="panelHeader">
       <div><h2>Empleados</h2><p class="muted">Personal registrado para controlar sus pagos.</p></div>
       <button class="btn" id="newPayrollEmployee2">＋ Agregar</button>
     </div>
@@ -854,7 +862,7 @@ document.querySelectorAll('.nav button').forEach(function(btn){
  });
 });
 
-function renderAll(){renderDashboard();renderMoves();renderAccounts();renderProviders();renderCommitments();renderCuts();renderCategories();renderPayments();renderReconciliations();renderPOSCloses();renderDataStatus();renderResult();renderPayroll();renderFixedPayments()}
+function renderAll(){renderDashboard();renderMoves();renderAccounts();renderProviders();renderCommitments();renderCuts();renderCategories();renderPayments();renderReconciliations();renderPOSCloses();renderDataStatus();renderResult();renderPayroll();renderFixedPayments();renderCorePayrollRequests()}
 
 function accountKind(a){
  const n=(a?.name||'').toLowerCase();
@@ -1051,6 +1059,44 @@ function deleteAccount(id){
 
 
 
+
+let corePayrollRequests=[],corePayrollLoading=false;
+function renderCorePayrollRequests(){
+ const box=document.getElementById('corePayrollRequests');if(!box)return;
+ if(corePayrollLoading){box.innerHTML='<div class="empty">Cargando solicitudes…</div>';return}
+ if(!window.PanoramaCoreFinance){box.innerHTML='<div class="empty">La conexión con Panorama Core no está disponible.</div>';return}
+ if(!corePayrollRequests.length){box.innerHTML='<div class="empty">No hay solicitudes de nómina pendientes.</div>';return}
+ box.innerHTML='<div class="tableWrap"><table class="table"><thead><tr><th>Periodo</th><th>Empleado</th><th>Importe</th><th></th></tr></thead><tbody>'+corePayrollRequests.map(r=>'<tr><td>'+esc(r.period_start)+' – '+esc(r.period_end)+'</td><td><b>'+esc(r.employees?.full_name||'Empleado')+'</b></td><td>'+money(r.amount)+'</td><td><button class="btn primary" data-pay-core-request="'+esc(r.id)+'">Pagar</button></td></tr>').join('')+'</tbody></table></div>';
+ document.querySelectorAll('[data-pay-core-request]').forEach(b=>b.addEventListener('click',()=>openCorePayrollPayment(b.dataset.payCoreRequest)));
+}
+async function refreshCorePayrollRequests(){
+ if(!window.PanoramaCoreFinance?.pending)return;
+ corePayrollLoading=true;renderCorePayrollRequests();
+ try{corePayrollRequests=await window.PanoramaCoreFinance.pending();}catch(error){console.warn('No se pudieron cargar las solicitudes de nómina',error);corePayrollRequests=[];const box=document.getElementById('corePayrollRequests');if(box)box.innerHTML='<div class="empty">No se pudieron cargar las solicitudes. Verifica el acceso a Panorama Core.</div>';return}
+ finally{corePayrollLoading=false;}
+ renderCorePayrollRequests();
+}
+function openCorePayrollPayment(requestId){
+ const req=corePayrollRequests.find(r=>r.id===requestId);if(!req)return;
+ const name=req.employees?.full_name||'Empleado';
+ openModal('<h2>Confirmar pago de nómina</h2><div class="notice"><b>'+esc(name)+'</b><br>'+esc(req.period_start)+' al '+esc(req.period_end)+' · <b>'+money(req.amount)+'</b></div><form id="corePayrollPaymentForm" data-request-id="'+esc(req.id)+'"><div class="formGrid"><div class="field"><label>Cuenta / dinero</label><select class="select" name="account">'+accountOptions()+'</select></div><div class="field"><label>Fecha</label><input class="input" name="date" type="date" value="'+today()+'" required></div><div class="field full"><label>Nota (opcional)</label><input class="input" name="note"></div></div><div class="modalActions"><button type="button" class="btn" id="cancelCorePayroll">Cancelar</button><button class="btn primary">Confirmar pago</button></div></form>');
+ document.getElementById('cancelCorePayroll').addEventListener('click',closeModal);
+ document.getElementById('corePayrollPaymentForm').addEventListener('submit',async ev=>{
+   ev.preventDefault();
+   const form=ev.currentTarget,data=new FormData(form),account=getAccount(data.get('account'));
+   if(!account||Number(account.balance)<Number(req.amount)){alert('Selecciona una cuenta con saldo suficiente.');return}
+   const movementId=uid(),recordId=uid(),paidAt=new Date(String(data.get('date'))+'T12:00:00').toISOString();
+   const submit=form.querySelector('button[type="submit"]');submit.disabled=true;
+   try{
+     await window.PanoramaCoreFinance.confirm(req,movementId,account.id,paidAt,String(data.get('note')||'').trim());
+     account.balance-=Number(req.amount);
+     db.payrollPeriods.push({id:recordId,created:Date.now(),employeeId:req.employee_id,employeeName:name,amount:Number(req.amount),accountId:account.id,date:data.get('date'),origin:'external',externalId:req.id,coreRequestId:req.id});
+     db.moves.push({id:movementId,created:Date.now(),origin:'nomina',externalId:req.id,sourceRecordId:recordId,type:'salida',date:data.get('date'),amount:Number(req.amount),concept:'Nómina — '+name,category:'nomina',from:account.id,to:null,account:account.id,note:String(data.get('note')||'')});
+     save();closeModal();await refreshCorePayrollRequests();
+   }catch(error){console.error('No se pudo confirmar el pago de nómina',error);alert('No se confirmó el pago. No se descontó ningún saldo local.');submit.disabled=false;}
+ });
+}
+window.addEventListener('panorama-core-finance-ready',()=>refreshCorePayrollRequests());
 
 function renderPayroll(){
  const eb=document.getElementById('payrollEmployeesBody'),pb=document.getElementById('payrollPaymentsBody');
@@ -1863,6 +1909,7 @@ document.getElementById('btnImportData').addEventListener('click',function(){doc
 document.getElementById('importFile').addEventListener('change',function(e){if(e.target.files[0])importData(e.target.files[0]);e.target.value=''});
 document.getElementById('btnResetData').addEventListener('click',resetTestData);
 document.getElementById('btnRefreshResult').addEventListener('click',renderResult);
+document.getElementById('refreshCorePayroll')?.addEventListener('click',refreshCorePayrollRequests);
 document.getElementById('btnAddLoyverse').addEventListener('click',openLoyverseSummary);
 document.getElementById('resultPeriod').addEventListener('change',function(){const c=this.value==='custom';document.getElementById('resultFrom').style.display=c?'block':'none';document.getElementById('resultTo').style.display=c?'block':'none';renderResult()});
 document.getElementById('resultFrom').addEventListener('change',renderResult);document.getElementById('resultTo').addEventListener('change',renderResult);
@@ -2020,5 +2067,7 @@ if(sidebar){
 })();
 </script>
 
+<script src="supabase-config.js"></script>
+<script src="panorama-core-integration.js"></script>
 </body>
 </html>
