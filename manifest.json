@@ -1,1 +1,10 @@
-{"name":"Panorama Café — Finanzas","short_name":"Panorama Finanzas","start_url":"./","scope":"./","display":"standalone","background_color":"#f4f1ec","theme_color":"#2d2926","lang":"es-MX"}
+{
+  "name": "Panorama Café — Finanzas",
+  "short_name": "Panorama Finanzas",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f1ec",
+  "theme_color": "#2d2926",
+  "lang": "es-MX"
+}

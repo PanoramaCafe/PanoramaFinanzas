@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Panorama Café — Finanzas PF-V1-020</title>
+<title>Panorama Café — Finanzas PF-V1-029</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f1ec;color:#272421}
 button,input,select,textarea{font:inherit}button{cursor:pointer}.app{display:flex;min-height:100vh}
@@ -41,7 +41,6 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.app{display:fle
  .panelHeader{align-items:flex-start;flex-direction:column}
 }
 
-
 /* PF-V1-017 — corrección de ancho, desbordamiento y navegación */
 html,body{max-width:100%;overflow-x:hidden}
 .content{min-width:0}
@@ -57,7 +56,6 @@ html,body{max-width:100%;overflow-x:hidden}
  .moduleHeader .btn{align-self:flex-start}
 }
 
-
 /* PF-V1-018 — vistas administrativas dentro del contenedor principal */
 .content{box-sizing:border-box;overflow-x:hidden}
 .view{width:100%;max-width:100%;box-sizing:border-box}
@@ -69,12 +67,13 @@ html,body{max-width:100%;overflow-x:hidden}
 .table{min-width:0}
 
 .fieldHelp{font-size:12px;color:#77716a;margin-top:6px;line-height:1.4}.field.full{grid-column:1/-1}
+.filterDate{display:flex;align-items:center;gap:6px;font-size:12px;color:#6f6a64}.filterDate .input{width:145px}
 </style>
 </head>
 <body>
 <div class="app">
 <aside class="sidebar">
-  <div class="brand"><strong>Panorama Café</strong><small>FINANZAS · PF-V1-017</small></div>
+  <div class="brand"><strong>Panorama Café</strong><small>FINANZAS · PF-V1-029</small></div>
   <nav class="nav">
     <button class="active" data-view="dashboard">⌂ <span>Inicio</span></button>
     <button data-view="movimientos">↔ <span>Movimientos</span></button>
@@ -114,7 +113,7 @@ html,body{max-width:100%;overflow-x:hidden}
   <div class="toolbar"><div><h2>Movimientos</h2><div class="muted">Entradas, salidas y transferencias.</div></div>
    <div class="actions"><button class="btn greenBtn" id="btnEntrada">＋ Entrada</button><button class="btn redBtn" id="btnSalida">− Salida</button><button class="btn blueBtn" id="btnTransfer">⇄ Transferencia</button></div>
   </div>
-  <div class="filters"><input class="input" id="searchMoves" placeholder="Buscar concepto..." style="max-width:280px"><select class="select" id="filterMoves"><option value="">Todos</option><option value="entrada">Entradas</option><option value="salida">Salidas</option><option value="transferencia">Transferencias</option></select></div>
+  <div class="filters"><input class="input" id="searchMoves" placeholder="Buscar concepto..." style="max-width:240px"><select class="select" id="filterMoves"><option value="">Todos</option><option value="entrada">Entradas</option><option value="salida">Salidas</option><option value="transferencia">Transferencias</option></select><label class="filterDate">Desde <input class="input" id="movesFrom" type="date"></label><label class="filterDate">Hasta <input class="input" id="movesTo" type="date"></label><button class="btn" id="clearMovesFilters">Limpiar</button></div>
   <div class="tableWrap"><table class="table"><thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th>Categoría</th><th>Cuenta</th><th>Importe</th><th></th></tr></thead><tbody id="movesBody"></tbody></table></div>
  </div>
 </section>
@@ -150,7 +149,8 @@ html,body{max-width:100%;overflow-x:hidden}
    <div class="panel"><h2>Resumen de Loyverse</h2><div id="loyverseSummary"></div><button class="btn primary" id="btnAddLoyverse">＋ Registrar resumen</button></div>
    <div class="panel"><h2>Salidas por categoría</h2><div id="resultCategories"></div></div>
   </div>
-  <div class="panel" style="margin-top:15px"><h2>Resumen del periodo</h2><div id="resultNarrative"></div></div>
+  <div class="panel" style="margin-top:15px" id="loyverseTreasuryPanel"></div>
+<div class="panel" style="margin-top:15px"><h2>Resumen del periodo</h2><div id="resultNarrative"></div></div>
  </div>
 </section>
 
@@ -298,11 +298,6 @@ html,body{max-width:100%;overflow-x:hidden}
 
 <div class="modal" id="modal"><div class="dialog" id="dialog"></div></div>
 
-
-
-
-
-
 <script>
 (function(){
 'use strict';
@@ -331,7 +326,7 @@ const DEFAULT={
    ['nomina','Nómina'],['impuesto','Impuesto'],['servicio','Servicio'],['otro_compromiso','Otro compromiso']
   ].map(x=>({id:x[0],name:x[1],active:true}))
  },
- moves:[],providers:[],commitments:[],cuts:[],providerPayments:[],commitmentPayments:[],reconciliations:[],posCloses:[],adjustments:[],loyverseSummaries:[]
+ moves:[],providers:[],commitments:[],cuts:[],providerPayments:[],commitmentPayments:[],payrollEmployees:[],payrollPeriods:[],fixedPayments:[],reconciliations:[],posCloses:[],adjustments:[],loyverseSummaries:[],loyverseTreasuryExpenses:[]
 };
 
 let db=load();
@@ -348,7 +343,7 @@ function load(){
   d.categories.salida=d.categories.salida||[];
   d.categories.compromiso=d.categories.compromiso||[];
   d.moves=d.moves||[]; d.providers=d.providers||[]; d.commitments=d.commitments||[]; d.cuts=d.cuts||[];
-  d.providerPayments=d.providerPayments||[]; d.commitmentPayments=d.commitmentPayments||[]; d.reconciliations=d.reconciliations||[]; d.posCloses=d.posCloses||[]; d.adjustments=d.adjustments||[]; d.loyverseSummaries=d.loyverseSummaries||[];
+  d.providerPayments=d.providerPayments||[]; d.commitmentPayments=d.commitmentPayments||[]; d.payrollEmployees=d.payrollEmployees||[]; d.payrollPeriods=d.payrollPeriods||[]; d.fixedPayments=d.fixedPayments||[]; d.reconciliations=d.reconciliations||[]; d.loyverseTreasuryExpenses=d.loyverseTreasuryExpenses||[]; d.posCloses=d.posCloses||[]; d.adjustments=d.adjustments||[]; d.loyverseSummaries=d.loyverseSummaries||[];
   return d;
  }catch(e){return clone(DEFAULT)}
 }
@@ -383,8 +378,7 @@ document.querySelectorAll('.nav button').forEach(function(btn){
  });
 });
 
-function renderAll(){renderDashboard();renderMoves();renderAccounts();renderProviders();renderCommitments();renderCuts();renderCategories();renderPayments();renderReconciliations();renderPOSCloses();renderDataStatus();renderResult()}
-renderPayroll();renderFixedPayments();
+function renderAll(){renderDashboard();renderMoves();renderAccounts();renderProviders();renderCommitments();renderCuts();renderCategories();renderPayments();renderReconciliations();renderPOSCloses();renderDataStatus();renderResult();renderPayroll();renderFixedPayments()}
 
 function accountKind(a){
  const n=(a?.name||'').toLowerCase();
@@ -392,7 +386,6 @@ function accountKind(a){
  return 'Digital';
 }
 function accountKindIcon(a){ return accountKind(a)==='Efectivo'?'💵':'🏦'; }
-
 
 function renderDashboard(){
  const total=db.accounts.reduce((s,a)=>s+Number(a.balance||0),0);
@@ -427,39 +420,103 @@ function movementOriginLabel(m){
 
 function renderMoves(){
  const body=document.getElementById('movesBody');if(!body)return;
- const rows=(db.moves||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.created||0)-(a.created||0));
+ const search=(document.getElementById('searchMoves')?.value||'').trim().toLowerCase();
+ const filter=document.getElementById('filterMoves')?.value||'';
+ const from=document.getElementById('movesFrom')?.value||'';
+ const to=document.getElementById('movesTo')?.value||'';
+ const rows=(db.moves||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.created||0)-(a.created||0))
+ .filter(function(m){
+   const type=(m.type||'').toLowerCase();
+   const normalized=type==='compra_credito'?'salida':type;
+   const matchesType=!filter||normalized===filter;
+   const matchesFrom=!from||(m.date||'')>=from;
+   const matchesTo=!to||(m.date||'')<=to;
+   const hay=(String(m.concept||'')+' '+String(m.note||'')+' '+String(movementOriginLabel(m)||'')+' '+String(m.category||'')).toLowerCase();
+   return matchesType&&matchesFrom&&matchesTo&&(!search||hay.includes(search));
+ });
  body.innerHTML=rows.map(function(m){
-   const acc=getAccount(m.account||m.from);
-   const amount=Number(m.amount||0);
-   const sign=m.type==='entrada'?'+':m.type==='transferencia'?'↔':'−';
-   return '<tr>'+
-    '<td>'+esc(m.date||'')+'</td>'+
-    '<td><b>'+esc(m.concept||'Movimiento')+'</b><div class="muted">'+esc(m.note||'')+'</div></td>'+
-    '<td>'+esc(movementOriginLabel(m))+'</td>'+
-    '<td>'+esc(acc?.name||'—')+'</td>'+
-    '<td class="'+(m.type==='entrada'?'green':'red')+'"><strong>'+sign+money(amount)+'</strong></td>'+
-    '<td><button class="btn" data-view-movement="'+m.id+'">Ver</button></td>'+
-   '</tr>';
- }).join('')||'<tr><td colspan="6"><div class="empty">No hay movimientos.</div></td></tr>';
+   const acc=getAccount(m.account||m.from),amount=Number(m.amount||0);
+   const isTransfer=m.type==='transferencia',isEntry=m.type==='entrada';
+   const sign=isEntry?'+':isTransfer?'↔':'−',color=isEntry?'green':isTransfer?'':'red';
+   const displayType=isTransfer?'Transferencia':isEntry?'Entrada':'Salida';
+   return '<tr><td>'+esc(m.date||'')+'</td><td>'+esc(displayType)+'</td><td><b>'+esc(m.concept||'Movimiento')+'</b><div class="muted">'+esc(m.note||'')+'</div></td><td>'+esc(m.category||'—')+'</td><td>'+esc(acc?.name||'—')+'</td><td class="'+color+'"><strong>'+sign+money(amount)+'</strong></td><td><button class="btn" data-view-movement="'+m.id+'">Ver</button></td></tr>';
+ }).join('')||'<tr><td colspan="7"><div class="empty">No hay movimientos que coincidan con los filtros.</div></td></tr>';
  document.querySelectorAll('[data-view-movement]').forEach(b=>b.addEventListener('click',function(){openMovementDetail(b.dataset.viewMovement)}));
 }
+
+
 function openMovementDetail(id){
  const m=(db.moves||[]).find(x=>x.id===id);if(!m)return;
- const acc=getAccount(m.account||m.from),to=getAccount(m.to);
+ const acc=getAccount(m.account||m.from),dest=getAccount(m.to);
  const origin=movementOriginLabel(m);
+ const linked=m.linkedType?('<br><span class="muted">Origen vinculado: '+esc(m.linkedType)+'</span>'):'';
  openModal('<h2>Detalle del movimiento</h2>'+
-  '<div class="row"><span>Fecha</span><b>'+esc(m.date||'')+'</b></div>'+
-  '<div class="row"><span>Concepto</span><b>'+esc(m.concept||'Movimiento')+'</b></div>'+
-  '<div class="row"><span>Origen</span><b>'+esc(origin)+'</b></div>'+
-  '<div class="row"><span>Cuenta afectada</span><b>'+esc(acc?.name||'—')+'</b></div>'+
-  (to?'<div class="row"><span>Destino</span><b>'+esc(to.name)+'</b></div>':'')+
-  '<div class="row"><span>Importe</span><b>'+money(m.amount||0)+'</b></div>'+
-  (m.externalId?'<div class="row"><span>Referencia externa</span><b>'+esc(m.externalId)+'</b></div>':'')+
-  '<div class="row"><span>Tipo</span><b>'+esc(m.type||'')+'</b></div>'+
-  '<div class="row"><span>Nota</span><b>'+esc(m.note||'—')+'</b></div>'+
-  '<div class="modalActions"><button class="btn" id="cancelModal">Cerrar</button></div>');
- document.getElementById('cancelModal').addEventListener('click',closeModal);
+ '<div class="notice"><b>'+esc(m.concept||'Movimiento')+'</b><br>'+esc(m.date||'')+' · '+esc(m.category||'—')+'<br>Importe: <strong>'+money(m.amount)+'</strong><br>Cuenta: '+esc(acc?.name||'—')+(dest?' → '+esc(dest.name):'')+'<br>Origen: '+esc(origin)+linked+'</div>'+
+ '<div class="modalActions"><button type="button" class="btn" id="editMovementBtn">Editar</button><button type="button" class="btn danger" id="deleteMovementBtn">Eliminar</button><button type="button" class="btn" id="closeMovementBtn">Cerrar</button></div>');
+ document.getElementById('closeMovementBtn').addEventListener('click',closeModal);
+ document.getElementById('editMovementBtn').addEventListener('click',function(){editMovement(id)});
+ document.getElementById('deleteMovementBtn').addEventListener('click',function(){deleteMovement(id)});
 }
+function editMovement(id){
+ const m=(db.moves||[]).find(x=>x.id===id);if(!m)return;
+ // Imported/linked records must be edited from their source module to avoid breaking reconciliation.
+ if(m.linkedType==='providerPurchase'){editProviderPurchase(m.linkedId);return}
+ if(m.linkedType==='provider'){editPayment('provider',m.paymentId||m.linkedId);return}
+ if(m.linkedType==='commitment'){editPayment('commitment',m.paymentId||m.linkedId);return}
+ if(m.linkedType==='loyverseTreasury'){alert('Este movimiento proviene de Loyverse. Debe modificarse desde Loyverse o desde el registro de Salidas de tesorería Loyverse.');return}
+ if(m.linkedType){alert('Este movimiento está vinculado a otro módulo. Modifícalo desde su registro de origen para evitar duplicidades.');return}
+ openModal('<h2>Editar movimiento</h2><form id="editMovementForm"><div class="formGrid">'+
+ '<div class="field"><label>Fecha</label><input class="input" name="date" type="date" value="'+esc(m.date||today())+'" required></div>'+
+ '<div class="field"><label>Tipo</label><select class="select" name="type"><option value="entrada">Entrada</option><option value="salida">Salida</option><option value="transferencia">Transferencia</option></select></div>'+
+ '<div class="field"><label>Importe</label><input class="input" name="amount" type="number" min="0.01" step="0.01" value="'+Number(m.amount||0)+'" required></div>'+
+ '<div class="field"><label>Cuenta</label><select class="select" name="account">'+accountOptions()+'</select></div>'+
+ '<div class="field"><label>Categoría</label><select class="select" name="category">'+categoryOptions(m.category||'')+'</select></div>'+
+ '<div class="field full"><label>Concepto</label><input class="input" name="concept" value="'+esc(m.concept||'')+'" required></div>'+
+ '<div class="field full"><label>Nota</label><input class="input" name="note" value="'+esc(m.note||'')+'"></div></div>'+
+ '<div class="modalActions"><button type="button" class="btn" id="cancelEditMovement">Cancelar</button><button class="btn primary">Guardar cambios</button></div></form>');
+ const f=document.getElementById('editMovementForm');
+ f.querySelector('[name="type"]').value=m.type==='compra_credito'?'salida':(m.type||'salida');
+ f.querySelector('[name="account"]').value=m.account||m.from||'';
+ document.getElementById('cancelEditMovement').addEventListener('click',closeModal);
+ f.addEventListener('submit',function(e){
+  e.preventDefault();
+  const d=new FormData(f),amount=Number(d.get('amount')),newType=String(d.get('type')),newAcc=getAccount(d.get('account')),oldAcc=getAccount(m.account||m.from);
+  if(!Number.isFinite(amount)||amount<=0){alert('El importe no es válido.');return}
+  if(!newAcc){alert('Selecciona una cuenta válida.');return}
+  // Revert old balance, then validate/apply the new balance.
+  if(m.type==='entrada'){if(oldAcc)oldAcc.balance-=Number(m.amount||0)}
+  else if(m.type==='salida'||m.type==='compra_credito'){if(oldAcc)oldAcc.balance+=Number(m.amount||0)}
+  if(newType==='entrada'){
+   newAcc.balance+=amount;
+  }else if(newType==='salida'){
+   if(newAcc.id!==oldAcc?.id && Number(newAcc.balance)<amount){
+    if(m.type==='entrada'){if(oldAcc)oldAcc.balance+=Number(m.amount||0)}else if(oldAcc)oldAcc.balance-=Number(m.amount||0);
+    alert('La cuenta no tiene saldo suficiente.');return;
+   }
+   if(newAcc.id===oldAcc?.id && Number(newAcc.balance)<amount){ // balance currently includes old amount
+    alert('La cuenta no tiene saldo suficiente.');if(m.type==='entrada')oldAcc.balance+=Number(m.amount||0);else oldAcc.balance-=Number(m.amount||0);return;
+   }
+   newAcc.balance-=amount;
+  }
+  m.date=String(d.get('date'));m.type=newType;m.amount=amount;m.account=newAcc.id;m.from=newAcc.id;m.category=String(d.get('category'));m.concept=String(d.get('concept'));m.note=String(d.get('note')||'');
+  save();renderMoves();closeModal();
+ });
+}
+function deleteMovement(id){
+ const m=(db.moves||[]).find(x=>x.id===id);if(!m)return;
+ if(m.linkedType==='providerPurchase'){deleteProviderPurchase(m.linkedId);return}
+ if(m.linkedType==='provider'){alert('Este pago debe eliminarse desde Proveedores para revertir también la deuda.');return}
+ if(m.linkedType==='commitment'){alert('Este pago debe eliminarse desde Compromisos para mantener el saldo correcto.');return}
+ if(m.linkedType==='loyverseTreasury'){alert('Esta salida proviene de Loyverse. Elimínala desde Salidas de tesorería Loyverse para revertir correctamente la cuenta.');return}
+ if(m.linkedType){alert('Este movimiento está vinculado a otro módulo. Elimínalo desde su registro de origen.');return}
+ if(!confirm('¿Eliminar este movimiento? Se revertirá su efecto sobre la cuenta.'))return;
+ const acc=getAccount(m.account||m.from);
+ if(m.type==='entrada'){if(acc)acc.balance-=Number(m.amount||0)}
+ else if(m.type==='salida'||m.type==='compra_credito'){if(acc)acc.balance+=Number(m.amount||0)}
+ db.moves=db.moves.filter(x=>x.id!==id);
+ save();renderMoves();
+}
+
 
 function renderAccounts(){
  const body=document.getElementById('accountsBody');
@@ -516,9 +573,8 @@ function deleteAccount(id){
  }
 }
 
-function providerPurchaseTotal(pid){return (db.providerPurchases||[]).filter(x=>x.providerId===pid).reduce((s,x)=>s+Number(x.amount||0),0)}
-function providerPaidTotal(pid){return (db.providerPayments||[]).filter(x=>x.providerId===pid).reduce((s,x)=>s+Number(x.amount||0),0)}
-function providerPending(pid){return Number(db.providers.find(x=>x.id===pid)?.creditBalance||0)}
+
+
 
 function renderPayroll(){
  const eb=document.getElementById('payrollEmployeesBody'),pb=document.getElementById('payrollPaymentsBody');
@@ -538,7 +594,6 @@ function renderPayroll(){
 function openPayrollEmployee(id){
  const e=id?db.payrollEmployees.find(x=>x.id===id):null;
  openModal('<h2>'+(e?'Editar empleado':'Nuevo empleado')+'</h2><form id="payrollEmployeeForm" data-employee-id="'+esc(e?.id||'')+'"><div class="formGrid"><div class="field"><label>Nombre</label><input class="input" name="name" value="'+esc(e?.name||'')+'" required></div><div class="field"><label>Pago habitual</label><input class="input" name="pay" type="number" min="0" step="0.01" value="'+Number(e?.defaultPay||0)+'" required></div></div><div class="modalActions"><button type="button" class="btn" id="cancelPayrollEmployee">Cancelar</button><button type="submit" class="btn primary">Guardar</button></div></form>');
- document.getElementById('cancelPayrollEmployee')?.addEventListener('click',closeModal);
 }
 
 function openPayrollPayment(){const em=db.payrollEmployees;if(!em.length){alert('Primero agrega un empleado.');return}openModal('<h2>Registrar pago de nómina</h2><form id="payrollPaymentForm"><div class="formGrid"><div class="field"><label>Empleado</label><select class="select" name="employee">'+em.map(e=>'<option value="'+e.id+'">'+esc(e.name)+'</option>').join('')+'</select></div><div class="field"><label>Importe</label><input class="input" name="amount" type="number" min="0.01" step="0.01" required></div><div class="field"><label>Cuenta / dinero</label><select class="select" name="account">'+accountOptions()+'</select></div><div class="field"><label>Fecha</label><input class="input" name="date" type="date" value="'+today()+'" required></div><div class="field"><label>Origen</label><select class="select" name="origin"><option value="local">Local / excepción</option><option value="external">App de Nómina</option></select></div><div class="field"><label>Referencia externa</label><input class="input" name="externalId"></div></div><div class="notice">Cuando exista la integración, el pago podrá llegar desde la app de Nómina sin recapturarlo.</div><div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Pagar</button></div></form>');document.getElementById('cancelModal').addEventListener('click',closeModal);document.getElementById('payrollPaymentForm').addEventListener('submit',ev=>{ev.preventDefault();const f=new FormData(ev.target),e=em.find(x=>x.id===f.get('employee')),amount=Number(f.get('amount')),acc=getAccount(f.get('account'));if(!e||amount<=0||!acc||acc.balance<amount){alert('Revisa los datos y el saldo.');return}acc.balance-=amount;const rec={id:uid(),created:Date.now(),employeeId:e.id,employeeName:e.name,amount,accountId:acc.id,date:f.get('date'),origin:f.get('origin'),externalId:f.get('externalId')||''};db.payrollPeriods.push(rec);db.moves.push({id:uid(),created:Date.now(),origin:'nomina',externalId:rec.externalId,sourceRecordId:rec.id,type:'salida',date:rec.date,amount,concept:'Nómina — '+e.name,category:'nomina',from:acc.id,to:null,account:acc.id,note:'Pago de nómina'});save();closeModal()})}
@@ -561,6 +616,16 @@ function openFixedPayment(id){
  const sync=()=>{form.querySelector('[name="account"]').disabled=form.querySelector('[name="status"]').value!=='pagado'};form.querySelector('[name="status"]').addEventListener('change',sync);sync();
  document.getElementById('cancelFixedPayment')?.addEventListener('click',closeModal);
 }
+
+function providerPurchaseTotal(pid){
+ return (db.providerPurchases||[]).filter(x=>x.providerId===pid).reduce((s,x)=>s+Number(x.amount||0),0);
+}
+function providerPaidTotal(pid){
+ const cash=(db.providerPurchases||[]).filter(x=>x.providerId===pid&&x.mode==='cash').reduce((s,x)=>s+Number(x.amount||0),0);
+ const payments=(db.providerPayments||[]).filter(x=>x.providerId===pid).reduce((s,x)=>s+Number(x.amount||0),0);
+ return cash+payments;
+}
+function providerPending(pid){return Math.max(0,Number(db.providers.find(x=>x.id===pid)?.creditBalance||0))}
 
 function renderProviders(){
  const body=document.getElementById('providersBody');if(!body)return;
@@ -601,17 +666,29 @@ function renderCategories(){
 }
 
 function renderPayments(){
- const pp=document.getElementById('providerPayments');
- const cp=document.getElementById('commitmentPayments');
- pp.innerHTML=db.providerPayments.slice().sort((a,b)=>b.created-a.created).map(function(p){
-  const prov=db.providers.find(x=>x.id===p.providerId), acc=getAccount(p.accountId);
-  return '<div class="row"><div><b>'+esc(prov?prov.name:'Proveedor eliminado')+'</b><div class="muted">'+p.date+' · '+esc(acc?acc.name:'')+' · '+esc(p.note||'')+'</div></div><div class="actions"><strong class="red">−'+money(p.amount)+'</strong><button class="btn" data-edit-provider-payment="'+p.id+'">Editar</button><button class="btn" data-del-provider-payment="'+p.id+'">Eliminar</button></div></div>';
- }).join('')||'<div class="empty">Sin pagos de proveedores.</div>';
+ const pp=document.getElementById('providerPayments'),cp=document.getElementById('commitmentPayments');
+ const purchases=(db.providerPurchases||[]).map(x=>({kind:'purchase',created:x.created||0,date:x.date,amount:x.amount,providerId:x.providerId,accountId:x.accountId||null,mode:x.mode,note:x.note||'',id:x.id}));
+ const payments=(db.providerPayments||[]).map(x=>({kind:'payment',created:x.created||0,date:x.date,amount:x.amount,providerId:x.providerId,accountId:x.accountId||null,note:x.note||'',id:x.id}));
+ const all=purchases.concat(payments).sort((a,b)=>b.created-a.created);
+ pp.innerHTML=all.map(function(x){
+  const prov=db.providers.find(p=>p.id===x.providerId),acc=getAccount(x.accountId);
+  const title=x.kind==='purchase'?(x.mode==='credit'?'Compra a crédito':'Compra de contado'):'Abono / pago de deuda';
+  const sign=x.kind==='purchase'&&x.mode==='credit'?'':'−';
+  const cls=x.kind==='purchase'&&x.mode==='credit'?'':'red';
+  const accountText=x.mode==='credit'?'Sin salida de dinero':(acc?acc.name:'Cuenta no disponible');
+  const actions=x.kind==='purchase'
+    ? '<button class="btn" data-edit-provider-purchase="'+x.id+'">Editar</button><button class="btn danger" data-del-provider-purchase="'+x.id+'">Eliminar</button>'
+    : '<button class="btn" data-edit-provider-payment="'+x.id+'">Editar</button><button class="btn danger" data-del-provider-payment="'+x.id+'">Eliminar</button>';
+  return '<div class="row"><div><b>'+esc(prov?prov.name:'Proveedor eliminado')+'</b><div class="muted">'+esc(title)+' · '+esc(x.date)+' · '+esc(accountText)+(x.note?' · '+esc(x.note):'')+'</div></div><div class="actions"><strong class="'+cls+'">'+sign+money(x.amount)+'</strong>'+actions+'</div></div>';
+ }).join('')||'<div class="empty">Sin operaciones de proveedores.</div>';
+
  cp.innerHTML=db.commitmentPayments.slice().sort((a,b)=>b.created-a.created).map(function(p){
-  const c=db.commitments.find(x=>x.id===p.commitmentId), acc=getAccount(p.accountId);
-  return '<div class="row"><div><b>'+esc(c?c.name:'Compromiso eliminado')+'</b><div class="muted">'+p.date+' · '+esc(acc?acc.name:'')+' · '+esc(p.note||'')+'</div></div><div class="actions"><strong class="red">−'+money(p.amount)+'</strong><button class="btn" data-edit-commitment-payment="'+p.id+'">Editar</button><button class="btn" data-del-commitment-payment="'+p.id+'">Eliminar</button></div></div>';
+  const c=db.commitments.find(x=>x.id===p.commitmentId),acc=getAccount(p.accountId);
+  return '<div class="row"><div><b>'+esc(c?c.name:'Compromiso eliminado')+'</b><div class="muted">'+p.date+' · '+esc(acc?acc.name:'')+' · '+esc(p.note||'')+'</div></div><div class="actions"><strong class="red">−'+money(p.amount)+'</strong><button class="btn" data-edit-commitment-payment="'+p.id+'">Editar</button><button class="btn danger" data-del-commitment-payment="'+p.id+'">Eliminar</button></div></div>';
  }).join('')||'<div class="empty">Sin pagos de compromisos.</div>';
 
+ document.querySelectorAll('[data-edit-provider-purchase]').forEach(function(b){b.addEventListener('click',function(){editProviderPurchase(b.dataset.editProviderPurchase)})});
+ document.querySelectorAll('[data-del-provider-purchase]').forEach(function(b){b.addEventListener('click',function(){deleteProviderPurchase(b.dataset.delProviderPurchase)})});
  document.querySelectorAll('[data-edit-provider-payment]').forEach(function(b){b.addEventListener('click',function(){editPayment('provider',b.dataset.editProviderPayment)})});
  document.querySelectorAll('[data-del-provider-payment]').forEach(function(b){b.addEventListener('click',function(){deletePayment('provider',b.dataset.delProviderPayment)})});
  document.querySelectorAll('[data-edit-commitment-payment]').forEach(function(b){b.addEventListener('click',function(){editPayment('commitment',b.dataset.editCommitmentPayment)})});
@@ -833,24 +910,95 @@ function openProvider(editId){
  document.getElementById('providerForm').addEventListener('submit',function(e){e.preventDefault();const f=new FormData(e.target);if(editId){p.name=f.get('name');p.paymentType=f.get('paymentType');p.note=f.get('note')}else db.providers.push({id:uid(),name:f.get('name'),paymentType:f.get('paymentType'),note:f.get('note'),creditBalance:0});save();closeModal()});
 }
 
+function editProviderPurchase(id){
+ const x=(db.providerPurchases||[]).find(a=>a.id===id);if(!x)return;
+ const p=db.providers.find(a=>a.id===x.providerId);if(!p)return;
+ openModal('<h2>Editar compra</h2><div class="notice"><b>'+esc(p.name)+'</b><br>Editar una compra puede modificar el saldo y/o la cuenta afectada.</div>'+
+ '<form id="editProviderPurchaseForm"><div class="formGrid"><div class="field"><label>Fecha</label><input class="input" name="date" type="date" value="'+esc(x.date)+'" required></div>'+
+ '<div class="field"><label>Importe</label><input class="input" name="amount" type="number" min="0.01" step="0.01" value="'+Number(x.amount)+'" required></div>'+
+ '<div class="field"><label>Forma</label><select class="select" name="mode"><option value="cash">Contado</option><option value="credit">Crédito</option></select></div>'+
+ '<div class="field"><label>Cuenta / caja</label><select class="select" name="account">'+accountOptions()+'</select></div>'+
+ '<div class="field full"><label>Nota</label><input class="input" name="note" value="'+esc(x.note||'')+'"></div></div>'+
+ '<div class="modalActions"><button type="button" class="btn" id="cancelEditPurchase">Cancelar</button><button type="submit" class="btn primary">Guardar cambios</button></div></form>');
+ const f=document.getElementById('editProviderPurchaseForm');
+ f.querySelector('[name="mode"]').value=x.mode||'cash';f.querySelector('[name="account"]').value=x.accountId||'';
+ const sync=()=>{f.querySelector('[name="account"]').disabled=f.querySelector('[name="mode"]').value!=='cash'};
+ f.querySelector('[name="mode"]').addEventListener('change',sync);sync();
+ document.getElementById('cancelEditPurchase').addEventListener('click',closeModal);
+ f.addEventListener('submit',function(e){
+  e.preventDefault();
+  const d=new FormData(f),amount=Number(d.get('amount')),mode=String(d.get('mode')),newAcc=getAccount(d.get('account'));
+  if(!Number.isFinite(amount)||amount<=0){alert('El importe no es válido.');return}
+  // Revert original financial effect first.
+  if(x.mode==='cash'){
+    const oldAcc=getAccount(x.accountId);
+    if(oldAcc)oldAcc.balance+=Number(x.amount);
+  }else{
+    p.creditBalance=Math.max(0,Number(p.creditBalance||0)-Number(x.amount));
+  }
+  // Update the linked movement.
+  const mv=db.moves.find(m=>m.linkedType==='providerPurchase'&&m.linkedId===x.id);
+  if(mode==='cash'){
+    if(!newAcc||Number(newAcc.balance)<amount){
+      // restore original effect if validation fails
+      if(x.mode==='cash'){const oldAcc=getAccount(x.accountId);if(oldAcc)oldAcc.balance-=Number(x.amount)}
+      else p.creditBalance=Number(p.creditBalance||0)+Number(x.amount);
+      alert('La cuenta no tiene saldo suficiente.');return;
+    }
+    newAcc.balance-=amount;
+    x.accountId=newAcc.id;x.mode='cash';
+    p.creditBalance=Number(p.creditBalance||0);
+    if(mv){mv.type='salida';mv.date=d.get('date');mv.amount=amount;mv.account=newAcc.id;mv.from=newAcc.id;mv.concept='Compra — '+p.name;mv.note=d.get('note')||'';mv.credit=false}
+  }else{
+    x.accountId=null;x.mode='credit';p.creditBalance=Number(p.creditBalance||0)+amount;
+    if(mv){mv.type='compra_credito';mv.date=d.get('date');mv.amount=amount;mv.account=null;mv.from=null;mv.to=null;mv.concept='Compra a crédito — '+p.name;mv.note=d.get('note')||'';mv.credit=true}
+  }
+  x.amount=amount;x.date=d.get('date');x.note=d.get('note')||'';
+  save();renderProviders();renderPayments();closeModal();
+ });
+}
+function deleteProviderPurchase(id){
+ const x=(db.providerPurchases||[]).find(a=>a.id===id);if(!x)return;
+ const p=db.providers.find(a=>a.id===x.providerId);
+ if(!confirm('¿Eliminar esta compra? Se revertirá su efecto financiero.'))return;
+ if(x.mode==='cash'){
+  const acc=getAccount(x.accountId);if(acc)acc.balance+=Number(x.amount||0);
+ }else if(p){
+  p.creditBalance=Math.max(0,Number(p.creditBalance||0)-Number(x.amount||0));
+ }
+ db.providerPurchases=db.providerPurchases.filter(a=>a.id!==id);
+ db.moves=db.moves.filter(m=>!(m.linkedType==='providerPurchase'&&m.linkedId===id));
+ save();renderProviders();renderPayments();
+}
 function openProviderPurchase(providerId){
  const p=db.providers.find(x=>x.id===providerId);if(!p)return;
  openModal('<h2>Registrar compra</h2><div class="notice"><b>'+esc(p.name)+'</b><br>Sólo se registra el importe financiero; los productos pertenecen al sistema de compras/inventario.</div>'+
  '<form id="purchaseForm"><div class="formGrid">'+
  '<div class="field"><label>Fecha</label><input class="input" name="date" type="date" value="'+today()+'" required></div>'+
  '<div class="field"><label>Importe</label><input class="input" name="amount" type="number" min="0.01" step="0.01" required></div>'+
- '<div class="field"><label>Forma</label><select class="select" name="paymentType"><option>Contado</option><option>Crédito</option></select></div>'+
+ '<div class="field"><label>Forma</label><select class="select" name="paymentType"><option value="cash">Contado</option><option value="credit">Crédito</option></select></div>'+
  '<div class="field"><label>Cuenta / caja</label><select class="select" name="account">'+accountOptions()+'</select></div>'+
  '<div class="field full"><label>Nota</label><input class="input" name="note"></div></div>'+
- '<div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Guardar compra</button></div></form>');
+ '<div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button type="submit" class="btn primary">Guardar compra</button></div></form>');
+ const form=document.getElementById('purchaseForm');
+ const sync=()=>{form.querySelector('[name="account"]').disabled=form.querySelector('[name="paymentType"]').value!=='cash'};
+ form.querySelector('[name="paymentType"]').addEventListener('change',sync);sync();
  document.getElementById('cancelModal').addEventListener('click',closeModal);
- document.getElementById('purchaseForm').addEventListener('submit',function(e){
-  e.preventDefault();const f=new FormData(e.target),amount=Number(f.get('amount')),type=f.get('paymentType'),acc=getAccount(f.get('account'));
-  if(amount<=0||!acc){alert('Revisa importe y cuenta.');return}
-  if(type==='Contado'&&acc.balance<amount){alert('La cuenta no tiene saldo suficiente.');return}
-  if(type==='Contado'){acc.balance-=amount;db.moves.push({id:uid(),created:Date.now(),type:'salida',date:f.get('date'),amount,concept:'Compra — '+p.name,category:'proveedores',from:acc.id,to:null,account:acc.id,note:f.get('note'),linkedType:'providerPurchase',linkedId:p.id})}
-  else {p.creditBalance=Number(p.creditBalance||0)+amount;db.moves.push({id:uid(),created:Date.now(),type:'compra_credito',date:f.get('date'),amount,concept:'Compra a crédito — '+p.name,category:'proveedores',from:null,to:null,account:null,note:f.get('note'),linkedType:'providerPurchase',linkedId:p.id,credit:true})}
-  save();closeModal();
+ form.addEventListener('submit',function(e){
+  e.preventDefault();
+  const f=new FormData(e.target),amount=Number(f.get('amount')),type=String(f.get('paymentType')),acc=getAccount(f.get('account'));
+  if(!Number.isFinite(amount)||amount<=0){alert('El importe no es válido.');return}
+  if(type==='cash'&&(!acc||Number(acc.balance)<amount)){alert('La cuenta no tiene saldo suficiente.');return}
+  const purchase={id:uid(),created:Date.now(),providerId:p.id,date:f.get('date'),amount,mode:type,accountId:type==='cash'?acc.id:null,note:f.get('note')||''};
+  db.providerPurchases=db.providerPurchases||[];db.providerPurchases.push(purchase);
+  if(type==='cash'){
+    acc.balance-=amount;
+    db.moves.push({id:uid(),created:Date.now(),type:'salida',date:purchase.date,amount,concept:'Compra — '+p.name,category:'proveedores',from:acc.id,to:null,account:acc.id,note:purchase.note,linkedType:'providerPurchase',linkedId:purchase.id});
+  }else{
+    p.creditBalance=Number(p.creditBalance||0)+amount;
+    db.moves.push({id:uid(),created:Date.now(),type:'compra_credito',date:purchase.date,amount,concept:'Compra a crédito — '+p.name,category:'proveedores',from:null,to:null,account:null,note:purchase.note,linkedType:'providerPurchase',linkedId:purchase.id,credit:true});
+  }
+  save();renderProviders();renderPayments();closeModal();
  });
 }
 
@@ -872,30 +1020,30 @@ function openCommitment(){
 }
 
 function recordPayment(kind,entityId){
- const list=kind==='provider'?db.providers:db.commitments;
- const entity=list.find(x=>x.id===entityId);if(!entity)return;
- const due=Math.max(0,Number(entity.total)-Number(entity.paid));
+ const list=kind==='provider'?db.providers:db.commitments,entity=list.find(x=>x.id===entityId);if(!entity)return;
+ const due=kind==='provider'?Math.max(0,Number(entity.creditBalance||0)):Math.max(0,Number(entity.total||0)-Number(entity.paid||0));
  if(due<=0){alert('No hay saldo pendiente.');return}
  const label=kind==='provider'?'proveedor':'compromiso';
- openModal('<h2>Registrar pago</h2><div class="notice"><b>'+esc(entity.name)+'</b><br>Pagado: '+money(entity.paid)+' · Pendiente: '+money(due)+'</div>'+
-  '<form id="paymentForm"><div class="formGrid"><div class="field"><label>Fecha</label><input class="input" name="date" type="date" value="'+today()+'" required></div>'+
-  '<div class="field"><label>Importe</label><input class="input" name="amount" type="number" min="0.01" max="'+due+'" step="0.01" value="'+due+'" required></div>'+
-  '<div class="field"><label>Cuenta / caja</label><select class="select" name="account">'+accountOptions()+'</select></div>'+
-  '<div class="field"><label>Nota</label><input class="input" name="note"></div></div>'+
-  '<div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Registrar pago y salida</button></div></form>');
+ openModal('<h2>Registrar pago</h2><div class="notice"><b>'+esc(entity.name)+'</b><br>Pendiente: '+money(due)+'</div>'+
+ '<form id="paymentForm"><div class="formGrid"><div class="field"><label>Fecha</label><input class="input" name="date" type="date" value="'+today()+'" required></div>'+
+ '<div class="field"><label>Importe</label><input class="input" name="amount" type="number" min="0.01" max="'+due+'" step="0.01" value="'+due+'" required></div>'+
+ '<div class="field"><label>Cuenta / caja</label><select class="select" name="account">'+accountOptions()+'</select></div>'+
+ '<div class="field"><label>Nota</label><input class="input" name="note"></div></div>'+
+ '<div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Registrar pago y salida</button></div></form>');
  document.getElementById('cancelModal').addEventListener('click',closeModal);
  document.getElementById('paymentForm').addEventListener('submit',function(e){
   e.preventDefault();const f=new FormData(e.target),amount=Number(f.get('amount')),acc=getAccount(f.get('account'));
-  if(amount<=0||amount>due){alert('El pago no puede superar el pendiente.');return}
-  if(!acc||acc.balance<amount){alert('La cuenta no tiene saldo suficiente.');return}
-  acc.balance-=amount;entity.paid=Number(entity.paid)+amount;
-  const payment={id:uid(),created:Date.now(),date:f.get('date'),amount:amount,accountId:acc.id,note:f.get('note')};
+  if(!Number.isFinite(amount)||amount<=0||amount>due){alert('El pago no puede superar el saldo pendiente de '+money(due)+'.');return}
+  if(!acc||Number(acc.balance)<amount){alert('La cuenta no tiene saldo suficiente.');return}
+  acc.balance-=amount;
+  const payment={id:uid(),created:Date.now(),date:f.get('date'),amount,accountId:acc.id,note:f.get('note')||''};
   if(kind==='provider'){payment.providerId=entity.id;db.providerPayments.push(payment);entity.creditBalance=Math.max(0,Number(entity.creditBalance||0)-amount)}
-  else {payment.commitmentId=entity.id;db.commitmentPayments.push(payment)}
-  db.moves.push({id:uid(),paymentId:payment.id,created:Date.now(),type:'salida',date:f.get('date'),amount:amount,concept:'Pago — '+entity.name,category:kind==='provider'?'proveedores':(entity.category||'deudas'),from:acc.id,to:null,account:acc.id,note:f.get('note'),linkedType:kind,linkedId:entity.id});
-  save();closeModal();
+  else {payment.commitmentId=entity.id;entity.paid=Number(entity.paid||0)+amount;db.commitmentPayments.push(payment)}
+  db.moves.push({id:uid(),paymentId:payment.id,created:Date.now(),type:'salida',date:payment.date,amount,concept:'Pago — '+entity.name,category:kind==='provider'?'proveedores':(entity.category||'deudas'),from:acc.id,to:null,account:acc.id,note:payment.note,linkedType:kind,linkedId:entity.id});
+  save();renderProviders();renderPayments();closeModal();
  });
 }
+
 function openProviderPayment(i){recordPayment('provider',i)}
 function openCommitmentPayment(i){recordPayment('commitment',i)}
 
@@ -985,26 +1133,31 @@ function renderReconciliations(){
 }
 function openReconciliation(){
  const cashAccounts=db.accounts.filter(a=>a.active&&a.type==='Caja');
- openModal('<h2>Nueva conciliación de caja</h2>'+
- '<div class="notice">Selecciona una caja y el periodo que quieres revisar. El sistema calculará el saldo inicial, entradas, salidas y efectivo teórico.</div>'+
- '<form id="reconciliationForm"><div class="formGrid">'+
- '<div class="field"><label>Caja</label><select class="select" name="account">'+cashAccounts.map(a=>'<option value="'+a.id+'">'+esc(a.name)+'</option>').join('')+'</select></div>'+
- '<div class="field"><label>Desde</label><input class="input" name="from" type="date" value="'+today()+'" required></div>'+
- '<div class="field"><label>Hasta</label><input class="input" name="to" type="date" value="'+today()+'" required></div>'+
+ if(!cashAccounts.length){alert('No hay ninguna cuenta de tipo Caja para conciliar.');return}
+ openModal('<h2>Nueva conciliación de caja</h2><div class="notice">Selecciona una caja y el periodo que quieres revisar. El sistema calculará el saldo inicial, entradas, salidas y efectivo teórico.</div>'+
+ '<form id="reconciliationForm"><div class="formGrid"><div class="field"><label>Caja</label><select class="select" name="account">'+cashAccounts.map(a=>'<option value="'+a.id+'">'+esc(a.name)+'</option>').join('')+'</select></div>'+
+ '<div class="field"><label>Desde</label><input class="input" name="from" type="date" value="'+today()+'" required></div><div class="field"><label>Hasta</label><input class="input" name="to" type="date" value="'+today()+'" required></div>'+
  '<div class="field"><label>Dinero real contado</label><input class="input" name="real" type="number" step="0.01" min="0" required></div>'+
- '<div class="field full"><label>Nota</label><textarea class="textarea" name="note" rows="3" placeholder="Ej. corte olvidado del 1 al 5 de agosto"></textarea></div>'+
- '</div><div id="reconPreview" class="notice"></div>'+
- '<div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Guardar conciliación</button></div></form>');
- const form=document.getElementById('reconciliationForm'), preview=document.getElementById('reconPreview');
- 
- form.querySelectorAll('input,select').forEach(x=>x.addEventListener('input',refresh));
- document.getElementById('cancelModal').addEventListener('click',closeModal);refresh();
+ '<div class="field full"><label>Nota</label><textarea class="textarea" name="note" rows="3" placeholder="Ej. corte olvidado del 1 al 5 de agosto"></textarea></div></div>'+
+ '<div id="reconPreview" class="notice"></div><div class="modalActions"><button type="button" class="btn" id="cancelReconciliation">Cancelar</button><button type="submit" class="btn primary">Guardar conciliación</button></div></form>');
+ const form=document.getElementById('reconciliationForm'),preview=document.getElementById('reconPreview');
+ function refresh(){
+  const accountId=form.querySelector('[name="account"]').value,from=form.querySelector('[name="from"]').value,to=form.querySelector('[name="to"]').value;
+  if(!from||!to||to<from){preview.textContent='Selecciona un periodo válido.';return}
+  const ob=openingBalance(accountId,from),mt=accountMovementTotals(accountId,from,to),theoretical=ob+mt.entradas-mt.salidas;
+  preview.innerHTML='<b>Saldo inicial:</b> '+money(ob)+' · <b>Entradas:</b> '+money(mt.entradas)+' · <b>Salidas:</b> '+money(mt.salidas)+' · <b>Efectivo teórico:</b> '+money(theoretical);
+ }
+ form.querySelectorAll('input,select').forEach(x=>x.addEventListener('input',refresh));form.querySelectorAll('select,input[type="date"]').forEach(x=>x.addEventListener('change',refresh));
+ document.getElementById('cancelReconciliation').addEventListener('click',closeModal);refresh();
  form.addEventListener('submit',function(e){
-  e.preventDefault();const f=new FormData(form),from=f.get('from'),to=f.get('to'),accountId=f.get('account');
-  if(to<from){alert('La fecha final no puede ser anterior a la fecha inicial.');return}
-  const ob=openingBalance(accountId,from),mt=accountMovementTotals(accountId,from,to),theoretical=ob+mt.entradas-mt.salidas,real=Number(f.get('real'));
-  db.reconciliations.push({id:uid(),created:Date.now(),accountId,from,to,opening:ob,entries:mt.entradas,exits:mt.salidas,theoretical,real,note:f.get('note')});
-  save();closeModal();
+  e.preventDefault();
+  const f=new FormData(form),from=String(f.get('from')),to=String(f.get('to')),accountId=String(f.get('account')),real=Number(f.get('real'));
+  if(!accountId||!from||!to||to<from){alert('Revisa la caja y las fechas.');return}
+  if(!Number.isFinite(real)||real<0){alert('El efectivo real contado no es válido.');return}
+  const ob=openingBalance(accountId,from),mt=accountMovementTotals(accountId,from,to),theoretical=ob+mt.entradas-mt.salidas;
+  db.reconciliations.push({id:uid(),created:Date.now(),accountId,from,to,opening:ob,entries:mt.entradas,exits:mt.salidas,theoretical,real,note:String(f.get('note')||'')});
+  save();renderReconciliations();closeModal();
+  const nav=document.querySelector('.nav button[data-view="conciliacion"]');if(nav)nav.click();
  });
 }
 
@@ -1108,7 +1261,62 @@ function resultRange(){
  if(t==='week'){const n=d.getDay(),diff=(n+6)%7,f=new Date(d);f.setDate(d.getDate()-diff);const z=new Date(f);z.setDate(f.getDate()+6);from=f.toISOString().slice(0,10);to=z.toISOString().slice(0,10)}
  return {from,to};
 }
+
+function loyverseTreasuryTotal(start,end){
+ return (db.loyverseTreasuryExpenses||[]).filter(x=>(!start||x.date>=start)&&(!end||x.date<=end)).reduce((s,x)=>s+Number(x.amount||0),0);
+}
+function importLoyverseTreasuryExpense(data){
+ const id=String(data.id||data.externalId||''); if(!id)return {ok:false,error:'Falta identificador de Loyverse.'};
+ db.loyverseTreasuryExpenses=db.loyverseTreasuryExpenses||[];
+ if(db.loyverseTreasuryExpenses.some(x=>String(x.externalId)===id))return {ok:false,duplicate:true};
+ const amount=Number(data.amount||0); if(!Number.isFinite(amount)||amount<=0)return {ok:false,error:'Importe inválido.'};
+ const acc=getAccount(String(data.accountId||''));
+ const rec={id:uid(),externalId:id,source:'loyverse_treasury',date:String(data.date||today()),amount,concept:String(data.concept||data.name||'Salida de tesorería Loyverse'),category:String(data.category||'tesoreria_loyverse'),note:String(data.note||''),accountId:acc?acc.id:null,created:Date.now()};
+ db.loyverseTreasuryExpenses.push(rec);
+ if(acc){
+  acc.balance-=amount;
+  db.moves.push({id:uid(),created:Date.now(),type:'salida',date:rec.date,amount,concept:rec.concept,category:'tesoreria_loyverse',from:acc.id,to:null,account:acc.id,note:rec.note,linkedType:'loyverseTreasury',linkedId:rec.id,externalId:id,source:'Loyverse'});
+ }
+ return {ok:true,record:rec};
+}
+
+
+function removeLoyverseTreasuryExpense(externalId){
+ db.loyverseTreasuryExpenses=(db.loyverseTreasuryExpenses||[]).filter(x=>String(x.externalId)!==String(externalId));
+}
+
+
+
+function openLoyverseTreasuryImportTest(){
+ openModal('<h2>Importar salida de tesorería Loyverse</h2><div class="notice">Esta herramienta es de prueba. La conexión automática con la API de Loyverse se añadirá después. Cada registro requiere un ID externo para evitar duplicados.</div><form id="loyverseTreasuryTestForm"><div class="formGrid"><div class="field"><label>ID Loyverse</label><input class="input" name="externalId" placeholder="Ej. cashout_001" required></div><div class="field"><label>Fecha</label><input class="input" name="date" type="date" value="'+today()+'" required></div><div class="field"><label>Importe</label><input class="input" name="amount" type="number" min="0.01" step="0.01" required></div><div class="field"><label>Cuenta / caja</label><select class="select" name="account">'+accountOptions()+'</select></div><div class="field"><label>Concepto</label><input class="input" name="concept" placeholder="Ej. Tomate" required></div><div class="field full"><label>Nota</label><input class="input" name="note"></div></div><div class="modalActions"><button type="button" class="btn" id="cancelLoyverseTreasury">Cancelar</button><button class="btn primary">Importar</button></div></form>');
+ document.getElementById('cancelLoyverseTreasury').addEventListener('click',closeModal);
+ document.getElementById('loyverseTreasuryTestForm').addEventListener('submit',function(e){
+  e.preventDefault();const d=new FormData(e.target),r=importLoyverseTreasuryExpense({id:d.get('externalId'),date:d.get('date'),amount:d.get('amount'),concept:d.get('concept'),note:d.get('note'),accountId:d.get('account')});
+  if(r.duplicate){alert('Ese movimiento de Loyverse ya está importado.');return}
+  if(!r.ok){alert(r.error||'No se pudo importar.');return}
+  save();renderResult();closeModal();
+ });
+}
+
+
+function renderLoyverseTreasuryPanel(start,end){
+ const el=document.getElementById('loyverseTreasuryPanel');if(!el)return;
+ const rows=(db.loyverseTreasuryExpenses||[]).filter(x=>(!start||x.date>=start)&&(!end||x.date<=end)).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+ el.innerHTML='<div class="toolbar"><div><h2>Salidas de tesorería · Loyverse</h2><div class="muted">Gastos registrados en Gestión de tesorería de Loyverse. Al importarlos, se reflejan como salidas financieras y no deben capturarse nuevamente.</div></div><button class="btn" data-action="import-loyverse-treasury">＋ Importar salida</button></div>'+
+ (rows.length?rows.map(x=>'<div class="row"><div><b>'+esc(x.concept)+'</b><div class="muted">'+esc(x.date)+(x.note?' · '+esc(x.note):'')+' · Origen: Loyverse</div></div><div class="actions"><strong class="red">−'+money(x.amount)+'</strong><button class="btn danger" data-del-loy-treasury="'+x.id+'">Eliminar</button></div></div>').join(''):'<div class="empty">Sin salidas de tesorería de Loyverse en el periodo.</div>');
+ document.querySelectorAll('[data-del-loy-treasury]').forEach(b=>b.addEventListener('click',function(){
+  const x=(db.loyverseTreasuryExpenses||[]).find(a=>a.id===b.dataset.delLoyTreasury);if(!x)return;
+  if(!confirm('¿Eliminar esta salida importada de Loyverse? Se revertirá su efecto financiero.'))return;
+  const acc=getAccount(x.accountId);if(acc)acc.balance+=Number(x.amount||0);
+  db.moves=db.moves.filter(m=>!(m.linkedType==='loyverseTreasury'&&m.linkedId===x.id));
+  db.loyverseTreasuryExpenses=db.loyverseTreasuryExpenses.filter(a=>a.id!==x.id);
+  save();renderResult();
+ }));
+}
+
 function renderResult(){
+ const resultPeriodRange=resultRange(),start=resultPeriodRange.from,end=resultPeriodRange.to; const loyverseTreasuryExpenses=(db.loyverseTreasuryExpenses||[]).filter(x=>x.date>=start&&x.date<=end).reduce((s,x)=>s+Number(x.amount||0),0);
+
  const r=resultRange(),from=r.from,to=r.to;
  const loy=db.loyverseSummaries.filter(x=>x.from>=from&&x.to<=to);
  const sales=loy.reduce((s,x)=>s+Number(x.sales||0),0),gross=loy.reduce((s,x)=>s+Number(x.gross||0),0);
@@ -1119,7 +1327,11 @@ function renderResult(){
  const cats={};db.moves.filter(m=>m.type==='salida'&&m.date>=from&&m.date<=to).forEach(m=>{const n=categoryName('salida',m.category)||'Sin categoría';cats[n]=(cats[n]||0)+Number(m.amount)});
  document.getElementById('resultCategories').innerHTML=Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(x=>'<div class="row"><span>'+esc(x[0])+'</span><strong>'+money(x[1])+'</strong></div>').join('')||'<div class="empty">Sin salidas.</div>';
  document.getElementById('resultNarrative').innerHTML='<div class="row"><div><b>Periodo</b><div class="muted">'+from+' → '+to+'</div></div><strong>'+money(sales)+'</strong></div><div class="row"><div><b>Beneficio bruto de Loyverse</b></div><strong>'+money(gross)+'</strong></div><div class="row"><div><b>Salidas financieras</b></div><strong class="red">−'+money(outs)+'</strong></div><div class="row"><div><b>Resultado de referencia</b><div class="muted">Beneficio bruto informado por Loyverse menos salidas financieras.</div></div><strong>'+money(gross-outs)+'</strong></div>';
-}
+
+ renderLoyverseTreasuryPanel(start,end);}
+
+
+
 function openLoyverseSummary(){
  openModal('<h2>Registrar resumen de Loyverse</h2><div class="notice">No se importan ventas individuales. Sólo el resumen consolidado.</div><form id="loyForm"><div class="formGrid"><div class="field"><label>Desde</label><input class="input" name="from" type="date" value="'+today()+'" required></div><div class="field"><label>Hasta</label><input class="input" name="to" type="date" value="'+today()+'" required></div><div class="field"><label>Ventas netas</label><input class="input" name="sales" type="number" min="0" step="0.01" required></div><div class="field"><label>Beneficio bruto</label><input class="input" name="gross" type="number" min="0" step="0.01" required></div><div class="field full"><label>Nota</label><textarea class="textarea" name="note"></textarea></div></div><div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Guardar</button></div></form>');
  document.getElementById('cancelModal').addEventListener('click',closeModal);
@@ -1182,10 +1394,9 @@ document.getElementById('searchMoves').addEventListener('input',renderMoves);
 document.getElementById('filterMoves').addEventListener('change',renderMoves);
 
 document.getElementById('resultFrom').style.display='none';document.getElementById('resultTo').style.display='none';renderAll();
-})();
-</script>
-<script>
-/* PF_V1_019_BUTTONS */
+
+
+// PF-V1-022 — handlers de Nómina y Pagos fijos dentro del mismo scope
 document.addEventListener('click',function(ev){
  const t=ev.target.closest?.('#newPayrollEmployee,#newPayrollEmployee2,#newPayrollPayment,#newFixedPayment');
  if(!t)return;
@@ -1193,9 +1404,7 @@ document.addEventListener('click',function(ev){
  if(t.id==='newPayrollPayment'){openPayrollPayment();return}
  if(t.id==='newFixedPayment'){openFixedPayment();return}
 });
-</script>
-<script>
-/* PF_V1_020_SUBMIT_HANDLERS */
+
 document.addEventListener('submit',function(ev){
  const form=ev.target;
  if(form.id==='payrollEmployeeForm'){
@@ -1227,6 +1436,14 @@ document.addEventListener('submit',function(ev){
   save();renderFixedPayments();closeModal();
  }
 });
+
+document.addEventListener('click',function(ev){const b=ev.target.closest?.('[data-action="import-loyverse-treasury"]');if(b){openLoyverseTreasuryImportTest()}});
+
+document.getElementById('searchMoves')?.addEventListener('input',renderMoves);document.getElementById('movesFrom')?.addEventListener('change',renderMoves);document.getElementById('movesTo')?.addEventListener('change',renderMoves);document.getElementById('clearMovesFilters')?.addEventListener('click',function(){['searchMoves','movesFrom','movesTo'].forEach(id=>{const x=document.getElementById(id);if(x)x.value=''});const f=document.getElementById('filterMoves');if(f)f.value='';renderMoves()});
+document.getElementById('filterMoves')?.addEventListener('change',renderMoves);
+})();
 </script>
-</body>
+
+
+<script>if("serviceWorker" in navigator && location.protocol!=="file:"){navigator.serviceWorker.register("./service-worker.js")}</script></body>
 </html>
