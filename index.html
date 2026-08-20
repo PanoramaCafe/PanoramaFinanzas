@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Panorama Café — Finanzas PF-V1-029</title>
+<title>Panorama Café — Finanzas PF-V1-034</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f1ec;color:#272421}
 button,input,select,textarea{font:inherit}button{cursor:pointer}.app{display:flex;min-height:100vh}
@@ -68,26 +68,141 @@ html,body{max-width:100%;overflow-x:hidden}
 
 .fieldHelp{font-size:12px;color:#77716a;margin-top:6px;line-height:1.4}.field.full{grid-column:1/-1}
 .filterDate{display:flex;align-items:center;gap:6px;font-size:12px;color:#6f6a64}.filterDate .input{width:145px}
+
+/* PF-V1-030 — barra lateral desplazable */
+.sidebar{
+  overflow-y:auto;
+  overflow-x:hidden;
+  max-height:100vh;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  scrollbar-width:thin;
+}
+.sidebar .nav{
+  padding-bottom:24px;
+}
+@media (max-width:900px){
+  .sidebar{
+    max-height:100dvh;
+  }
+}
+
+/* PF-V1-032 — sidebar compacta y contraíble */
+.sidebar{
+  width:238px;
+  min-width:238px;
+  max-height:100vh;
+  overflow-y:auto;
+  overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  transition:width .18s ease,min-width .18s ease,transform .18s ease;
+}
+.sidebar .brand{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+}
+.sidebar .brandMain{min-width:0}
+.sidebar .sidebarToggle{
+  flex:0 0 30px;
+  width:30px;height:30px;
+  padding:0;
+  border:0;border-radius:7px;
+  background:transparent;
+  cursor:pointer;
+  font-size:22px;
+  line-height:1;
+  display:flex;align-items:center;justify-content:center;
+}
+.sidebar .nav{padding-bottom:18px}
+.sidebar .nav button{
+  width:100%;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-height:40px;
+  padding:8px 10px;
+  text-align:left;
+}
+.sidebar .navIcon{
+  width:22px;
+  min-width:22px;
+  text-align:center;
+  display:inline-flex;
+  justify-content:center;
+  align-items:center;
+}
+.sidebar .navText{white-space:nowrap}
+.sidebar.is-collapsed{
+  width:64px;
+  min-width:64px;
+}
+.sidebar.is-collapsed .brandMain,
+.sidebar.is-collapsed .navText{display:none}
+.sidebar.is-collapsed .brand{justify-content:center}
+.sidebar.is-collapsed .sidebarToggle{margin:0 auto}
+.sidebar.is-collapsed .nav button{
+  justify-content:center;
+  padding-left:0;
+  padding-right:0;
+}
+@media(max-width:900px){
+  .sidebar{
+    position:fixed;
+    left:0;top:0;bottom:0;
+    z-index:1000;
+    width:238px;
+    min-width:238px;
+    max-width:82vw;
+    transform:translateX(0);
+  }
+  .sidebar.is-collapsed{
+    width:238px;
+    min-width:238px;
+    transform:translateX(-100%);
+  }
+  .sidebar.is-collapsed .brandMain,
+  .sidebar.is-collapsed .navText{display:block}
+  .sidebar.is-collapsed .brand{justify-content:space-between}
+}
+.sidebarOverlay{display:none}.sidebarOverlay.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.18);z-index:999}@media(min-width:901px){.sidebarOverlay{display:none!important}}
+.sidebar .sidebarToggle .hamburger{
+  display:block;
+  font-size:22px;
+  line-height:1;
+  transform:scaleX(1.05);
+}
+
+.sidebar .sidebarToggle .hamburger{
+  color:#fff !important;
+  -webkit-text-fill-color:#fff;
+}
 </style>
 </head>
 <body>
 <div class="app">
-<aside class="sidebar">
-  <div class="brand"><strong>Panorama Café</strong><small>FINANZAS · PF-V1-029</small></div>
-  <nav class="nav">
-    <button class="active" data-view="dashboard">⌂ <span>Inicio</span></button>
-    <button data-view="movimientos">↔ <span>Movimientos</span></button>
-    <button data-view="cuentas">▣ <span>Cuentas y dinero</span></button>
-    <button data-view="proveedores">♙ <span>Proveedores</span></button>
-    <button data-view="payroll">👥 <span>Nómina</span></button>
-    <button data-view="pagosfijos">▣ <span>Pagos fijos</span></button>
-    <button data-view="resultado">▥ <span>Resultado</span></button>
-    <button data-view="compromisos">◷ <span>Compromisos</span></button>
-    <button data-view="cortes">▤ <span>Cortes</span></button>
-    <button data-view="conciliacion">✓ <span>Conciliación</span></button>
-    <button data-view="cierrepos">▣ <span>Cierre POS</span></button>
-    <button data-view="catalogos">⚙ <span>Catálogos</span></button>
-    <button data-view="datos">⇩ <span>Datos / Respaldo</span></button>
+<div id="sidebarOverlay" class="sidebarOverlay"></div>
+<aside class="sidebar" id="appSidebar">
+  <div class="brand">
+    <div class="brandMain"><strong>Panorama Café</strong><small>FINANZAS · PF-V1-032</small></div>
+    <button type="button" class="sidebarToggle" id="sidebarToggle" aria-label="Cerrar barra lateral" title="Cerrar barra lateral"><span class="hamburger">☰</span></button>
+  </div>
+  <nav class="nav" aria-label="Navegación principal">
+    <button class="active" data-view="dashboard"><span class="navIcon">⌂</span><span class="navText">Inicio</span></button>
+    <button data-view="movimientos"><span class="navIcon">↔</span><span class="navText">Movimientos</span></button>
+    <button data-view="cuentas"><span class="navIcon">▣</span><span class="navText">Cuentas y dinero</span></button>
+    <button data-view="proveedores"><span class="navIcon">♙</span><span class="navText">Proveedores</span></button>
+    <button data-view="payroll"><span class="navIcon">👥</span><span class="navText">Nómina</span></button>
+    <button data-view="pagosfijos"><span class="navIcon">▣</span><span class="navText">Pagos fijos</span></button>
+    <button data-view="resultado"><span class="navIcon">▥</span><span class="navText">Resultado</span></button>
+    <button data-view="compromisos"><span class="navIcon">◷</span><span class="navText">Compromisos</span></button>
+    <button data-view="cortes"><span class="navIcon">▤</span><span class="navText">Cortes</span></button>
+    <button data-view="conciliacion"><span class="navIcon">✓</span><span class="navText">Conciliación</span></button>
+    <button data-view="cierrepos"><span class="navIcon">▣</span><span class="navText">Cierre POS</span></button>
+    <button data-view="catalogos"><span class="navIcon">⚙</span><span class="navText">Catálogos</span></button>
+    <button data-view="datos"><span class="navIcon">⇩</span><span class="navText">Datos / Respaldo</span></button>
   </nav>
 </aside>
 
@@ -1441,6 +1556,25 @@ document.addEventListener('click',function(ev){const b=ev.target.closest?.('[dat
 
 document.getElementById('searchMoves')?.addEventListener('input',renderMoves);document.getElementById('movesFrom')?.addEventListener('change',renderMoves);document.getElementById('movesTo')?.addEventListener('change',renderMoves);document.getElementById('clearMovesFilters')?.addEventListener('click',function(){['searchMoves','movesFrom','movesTo'].forEach(id=>{const x=document.getElementById(id);if(x)x.value=''});const f=document.getElementById('filterMoves');if(f)f.value='';renderMoves()});
 document.getElementById('filterMoves')?.addEventListener('change',renderMoves);
+
+const sidebar=document.getElementById('appSidebar');
+const sidebarToggle=document.getElementById('sidebarToggle');
+const sidebarOverlay=document.getElementById('sidebarOverlay');
+if(sidebar&&sidebarToggle){
+  const isMobile=()=>window.matchMedia('(max-width:900px)').matches;
+  const setSidebar=(collapsed)=>{
+    sidebar.classList.toggle('is-collapsed',collapsed);
+    sidebarToggle.innerHTML='<span class="hamburger">☰</span>';
+    sidebarToggle.setAttribute('aria-label',collapsed?'Abrir barra lateral':'Cerrar barra lateral');
+    sidebarToggle.title=collapsed?'Abrir barra lateral':'Cerrar barra lateral';
+    if(sidebarOverlay)sidebarOverlay.classList.toggle('show',isMobile()&&!collapsed);
+    if(!isMobile())localStorage.setItem('panorama_sidebar_collapsed',collapsed?'1':'0');
+  };
+  setSidebar(!isMobile()&&localStorage.getItem('panorama_sidebar_collapsed')==='1');
+  sidebarToggle.addEventListener('click',()=>setSidebar(!sidebar.classList.contains('is-collapsed')));
+  sidebarOverlay?.addEventListener('click',()=>{if(isMobile())setSidebar(true)});
+  window.addEventListener('resize',()=>setSidebar(isMobile()?true:localStorage.getItem('panorama_sidebar_collapsed')==='1'));
+}
 })();
 </script>
 
