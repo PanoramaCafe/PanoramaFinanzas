@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Panorama Café — Finanzas PF-V1-034</title>
+<title>Panorama Café — Finanzas PF-V1-035</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f1ec;color:#272421}
 button,input,select,textarea{font:inherit}button{cursor:pointer}.app{display:flex;min-height:100vh}
@@ -179,10 +179,40 @@ html,body{max-width:100%;overflow-x:hidden}
   color:#fff !important;
   -webkit-text-fill-color:#fff;
 }
+
+.mobileSidebarToggle{
+  display:none;
+}
+@media(max-width:900px){
+  .mobileSidebarToggle{
+    display:flex;
+    position:fixed;
+    left:12px;
+    top:12px;
+    z-index:998;
+    width:42px;
+    height:42px;
+    align-items:center;
+    justify-content:center;
+    border:0;
+    border-radius:9px;
+    background:#2d2926;
+    color:#fff;
+    font-size:23px;
+    line-height:1;
+    box-shadow:0 2px 8px rgba(0,0,0,.18);
+    cursor:pointer;
+  }
+  .sidebar:not(.is-collapsed) ~ .mobileSidebarToggle,
+  body:has(.sidebar:not(.is-collapsed)) .mobileSidebarToggle{
+    display:none;
+  }
+}
 </style>
 </head>
 <body>
 <div class="app">
+<button type="button" class="mobileSidebarToggle" id="mobileSidebarToggle" aria-label="Abrir barra lateral" title="Abrir barra lateral">☰</button>
 <div id="sidebarOverlay" class="sidebarOverlay"></div>
 <aside class="sidebar" id="appSidebar">
   <div class="brand">
@@ -1559,21 +1589,35 @@ document.getElementById('filterMoves')?.addEventListener('change',renderMoves);
 
 const sidebar=document.getElementById('appSidebar');
 const sidebarToggle=document.getElementById('sidebarToggle');
+const mobileSidebarToggle=document.getElementById('mobileSidebarToggle');
 const sidebarOverlay=document.getElementById('sidebarOverlay');
-if(sidebar&&sidebarToggle){
+if(sidebar){
   const isMobile=()=>window.matchMedia('(max-width:900px)').matches;
   const setSidebar=(collapsed)=>{
     sidebar.classList.toggle('is-collapsed',collapsed);
-    sidebarToggle.innerHTML='<span class="hamburger">☰</span>';
-    sidebarToggle.setAttribute('aria-label',collapsed?'Abrir barra lateral':'Cerrar barra lateral');
-    sidebarToggle.title=collapsed?'Abrir barra lateral':'Cerrar barra lateral';
+    const label=collapsed?'Abrir barra lateral':'Cerrar barra lateral';
+    if(sidebarToggle){
+      sidebarToggle.innerHTML='<span class="hamburger">☰</span>';
+      sidebarToggle.setAttribute('aria-label',label);
+      sidebarToggle.title=label;
+    }
+    if(mobileSidebarToggle){
+      mobileSidebarToggle.style.display=isMobile()&&collapsed?'flex':'none';
+      mobileSidebarToggle.setAttribute('aria-label','Abrir barra lateral');
+      mobileSidebarToggle.title='Abrir barra lateral';
+    }
     if(sidebarOverlay)sidebarOverlay.classList.toggle('show',isMobile()&&!collapsed);
     if(!isMobile())localStorage.setItem('panorama_sidebar_collapsed',collapsed?'1':'0');
   };
-  setSidebar(!isMobile()&&localStorage.getItem('panorama_sidebar_collapsed')==='1');
-  sidebarToggle.addEventListener('click',()=>setSidebar(!sidebar.classList.contains('is-collapsed')));
+  const initialCollapsed=isMobile()?true:localStorage.getItem('panorama_sidebar_collapsed')==='1';
+  setSidebar(initialCollapsed);
+  sidebarToggle?.addEventListener('click',()=>setSidebar(!sidebar.classList.contains('is-collapsed')));
+  mobileSidebarToggle?.addEventListener('click',()=>setSidebar(false));
   sidebarOverlay?.addEventListener('click',()=>{if(isMobile())setSidebar(true)});
-  window.addEventListener('resize',()=>setSidebar(isMobile()?true:localStorage.getItem('panorama_sidebar_collapsed')==='1'));
+  window.addEventListener('resize',()=>{
+    if(isMobile()) setSidebar(true);
+    else setSidebar(localStorage.getItem('panorama_sidebar_collapsed')==='1');
+  });
 }
 })();
 </script>
