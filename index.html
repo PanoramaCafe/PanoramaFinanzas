@@ -1,0 +1,1176 @@
+<!doctype html>
+<html lang="es">
+<head><link rel="manifest" href="./manifest.json"><meta name="theme-color" content="#2d2926"><link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Panorama Café — Finanzas PF-V1-018</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f1ec;color:#272421}
+button,input,select,textarea{font:inherit}button{cursor:pointer}.app{display:flex;min-height:100vh}
+.sidebar{width:240px;background:#2d2926;color:#fff;position:fixed;inset:0 auto 0 0;padding:20px 14px}
+.brand{padding:8px 10px 22px;border-bottom:1px solid #4a4540}.brand strong{display:block;font-size:19px}.brand small{color:#bcb5ad}
+.nav{margin-top:16px}.nav button{width:100%;border:0;background:transparent;color:#ddd;text-align:left;padding:12px 13px;border-radius:8px;margin:3px 0}.nav button.active,.nav button:hover{background:#48423d;color:#fff}
+.content{margin-left:240px;width:calc(100% - 240px);padding:26px;max-width:1500px}.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}.header h1{margin:0;font-size:26px}.muted{color:#777;font-size:12px}.version{background:#e7dfd5;border-radius:20px;padding:7px 10px;font-size:11px;color:#5b5046}
+.view{display:none}.view.active{display:block}.notice{padding:12px 14px;background:#f7efe5;border:1px solid #e7d9c7;border-radius:10px;color:#66594c;font-size:12px;margin-bottom:15px}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:13px}.card,.panel{background:#fff;border:1px solid #e4dfd8;border-radius:13px;box-shadow:0 6px 24px rgba(30,20,10,.06)}.card{padding:17px}.card .label{font-size:12px;color:#777}.card .number{font-size:24px;font-weight:700;margin-top:7px}.green{color:#28784a}.red{color:#b34a4a}.blue{color:#3f6985}
+.columns{display:grid;grid-template-columns:1.45fr 1fr;gap:15px;margin-top:15px}.panel{padding:17px}.panel h2{font-size:16px;margin:0 0 14px}.toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}.actions{display:flex;gap:7px;flex-wrap:wrap}.btn{border:1px solid #ddd7d0;background:#fff;border-radius:8px;padding:9px 12px}.btn.primary{background:#59493d;border-color:#59493d;color:#fff}.btn.greenBtn{background:#e9f5ed;border-color:#cde6d5;color:#28784a}.btn.redBtn{background:#faecec;border-color:#efd1d1;color:#b34a4a}.btn.blueBtn{background:#edf4f8;border-color:#d6e5ed;color:#3f6985}
+.row{display:flex;justify-content:space-between;gap:12px;align-items:center;border-bottom:1px solid #ece8e2;padding:12px 0}.row:last-child{border-bottom:0}.empty{text-align:center;color:#888;padding:24px;font-size:13px}
+.tableWrap{overflow:auto}.table{width:100%;border-collapse:collapse;font-size:13px}.table th,.table td{padding:10px 8px;border-bottom:1px solid #e9e5df;text-align:left;white-space:nowrap}.table th{font-size:10px;color:#777;text-transform:uppercase}.pill{display:inline-block;padding:4px 7px;border-radius:20px;font-size:10px}.pill.in{background:#e8f5ed;color:#28784a}.pill.out{background:#faecec;color:#b34a4a}.pill.tr{background:#edf4f8;color:#3f6985}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.input,.select,.textarea{width:100%;padding:10px;border:1px solid #d9d4cd;border-radius:8px;background:#fff}.filters .input,.filters .select{width:auto}
+.modal{display:none;position:fixed;z-index:50;inset:0;background:rgba(0,0,0,.45);align-items:center;justify-content:center;padding:18px}.modal.open{display:flex}.dialog{background:#fff;width:min(570px,100%);max-height:90vh;overflow:auto;border-radius:14px;padding:21px}.dialog h2{margin-top:0}.formGrid{display:grid;grid-template-columns:1fr 1fr;gap:11px}.field{margin-bottom:11px}.field label{display:block;font-size:11px;color:#777;margin-bottom:5px}.full{grid-column:1/-1}.modalActions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+@media(max-width:900px){.sidebar{width:70px}.brand strong,.brand small,.nav button span{display:none}.nav button{text-align:center}.content{margin-left:70px;width:calc(100% - 70px);padding:17px}.cards{grid-template-columns:1fr 1fr}.columns{grid-template-columns:1fr}}
+@media(max-width:560px){.cards{grid-template-columns:1fr}.formGrid{grid-template-columns:1fr}.full{grid-column:auto}}
+
+/* Módulos administrativos: misma jerarquía visual que el resto de la aplicación */
+.moduleHeader{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:18px}
+.moduleHeader h1{margin:3px 0 6px;font-size:26px}
+.moduleIntro{margin:0;color:#706a63;max-width:760px;line-height:1.5}
+.eyebrow{font-size:11px;letter-spacing:.12em;font-weight:800;color:#8a6d4b}
+.moduleStats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin-bottom:16px}
+.moduleStat{background:#fff;border:1px solid #e4dfd8;border-radius:13px;padding:14px 16px;box-shadow:0 6px 24px rgba(30,20,10,.05)}
+.moduleStat span{display:block;color:#77716a;font-size:12px;margin-bottom:5px}
+.moduleStat strong{font-size:21px}
+.modulePanel{margin-bottom:16px}
+.panelHeader{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:13px}
+.panelHeader h2{margin:0 0 3px}
+.panelHeader .muted{margin:0}
+.statusPill,.originPill{display:inline-flex;align-items:center;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:700;background:#f0ece7;color:#655d55}
+@media(max-width:760px){
+ .moduleHeader{flex-direction:column}
+ .moduleStats{grid-template-columns:1fr}
+ .panelHeader{align-items:flex-start;flex-direction:column}
+}
+
+
+/* PF-V1-017 — corrección de ancho, desbordamiento y navegación */
+html,body{max-width:100%;overflow-x:hidden}
+.content{min-width:0}
+.view{min-width:0}
+.moduleHeader{width:100%;min-width:0}
+.moduleHeader>div:first-child{min-width:0}
+.moduleIntro{overflow-wrap:anywhere}
+.moduleHeader .btn{flex:0 0 auto}
+.modulePanel{min-width:0}
+.modulePanel .tableWrap{max-width:100%}
+@media(max-width:900px){
+ .moduleHeader{gap:12px}
+ .moduleHeader .btn{align-self:flex-start}
+}
+
+
+/* PF-V1-018 — vistas administrativas dentro del contenedor principal */
+.content{box-sizing:border-box;overflow-x:hidden}
+.view{width:100%;max-width:100%;box-sizing:border-box}
+.moduleHeader,.moduleStats,.modulePanel{box-sizing:border-box;max-width:100%}
+.moduleStats{min-width:0}
+.moduleStat{min-width:0}
+.moduleStat strong{overflow-wrap:anywhere}
+.tableWrap{width:100%;max-width:100%;overflow-x:auto}
+.table{min-width:0}
+
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="brand"><strong>Panorama Café</strong><small>FINANZAS · PF-V1-017</small></div>
+  <nav class="nav">
+    <button class="active" data-view="dashboard">⌂ <span>Inicio</span></button>
+    <button data-view="movimientos">↔ <span>Movimientos</span></button>
+    <button data-view="cuentas">▣ <span>Cuentas y dinero</span></button>
+    <button data-view="proveedores">♙ <span>Proveedores</span></button>
+    <button data-view="payroll">👥 <span>Nómina</span></button>
+    <button data-view="pagosfijos">▣ <span>Pagos fijos</span></button>
+    <button data-view="resultado">▥ <span>Resultado</span></button>
+    <button data-view="compromisos">◷ <span>Compromisos</span></button>
+    <button data-view="cortes">▤ <span>Cortes</span></button>
+    <button data-view="conciliacion">✓ <span>Conciliación</span></button>
+    <button data-view="cierrepos">▣ <span>Cierre POS</span></button>
+    <button data-view="catalogos">⚙ <span>Catálogos</span></button>
+    <button data-view="datos">⇩ <span>Datos / Respaldo</span></button>
+  </nav>
+</aside>
+
+<main class="content">
+<header class="header"><div><h1 id="title">Posición financiera</h1><div class="muted">Control del dinero real de Panorama Café</div></div><div class="version">PF-V1-017</div></header>
+
+<section id="dashboard" class="view active">
+  <div class="notice">Loyverse sigue siendo el punto de venta. Esta app controla el dinero real, compromisos y movimientos.</div>
+  <div class="cards">
+    <div class="card"><div class="label">Dinero disponible</div><div class="number" id="totalMoney">$0.00</div></div>
+    <div class="card"><div class="label">Comprometido</div><div class="number red" id="totalCommitted">$0.00</div></div>
+    <div class="card"><div class="label">Dinero libre</div><div class="number green" id="freeMoney">$0.00</div></div>
+    <div class="card"><div class="label">Movimientos</div><div class="number" id="moveCount">0</div></div>
+  </div>
+  <div class="columns">
+    <div class="panel"><h2>Dinero por cuenta</h2><div id="dashboardAccounts"></div></div>
+    <div class="panel"><h2>Últimos movimientos</h2><div id="dashboardMoves"></div></div>
+  </div>
+</section>
+
+<section id="movimientos" class="view">
+ <div class="panel">
+  <div class="toolbar"><div><h2>Movimientos</h2><div class="muted">Entradas, salidas y transferencias.</div></div>
+   <div class="actions"><button class="btn greenBtn" id="btnEntrada">＋ Entrada</button><button class="btn redBtn" id="btnSalida">− Salida</button><button class="btn blueBtn" id="btnTransfer">⇄ Transferencia</button></div>
+  </div>
+  <div class="filters"><input class="input" id="searchMoves" placeholder="Buscar concepto..." style="max-width:280px"><select class="select" id="filterMoves"><option value="">Todos</option><option value="entrada">Entradas</option><option value="salida">Salidas</option><option value="transferencia">Transferencias</option></select></div>
+  <div class="tableWrap"><table class="table"><thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th>Categoría</th><th>Cuenta</th><th>Importe</th><th></th></tr></thead><tbody id="movesBody"></tbody></table></div>
+ </div>
+</section>
+
+<section id="cuentas" class="view">
+ <div class="panel"><div class="toolbar"><div><h2>Cuentas y dinero</h2><div class="notice">💵 <b>Efectivo físico</b> = dinero que está en el café. 🏦 <b>Cuenta digital</b> = dinero que está en Mercado Pago, Revolut u otra cuenta.</div><div class="muted">Saldos reales registrados.</div></div><button class="btn primary" id="btnNewAccount">＋ Nueva cuenta</button></div><table class="table"><thead><tr><th>Cuenta</th><th>Saldo actual</th><th>Tipo</th><th>Acciones</th></tr></thead><tbody id="accountsBody"></tbody></table></div>
+</section>
+
+<section id="proveedores" class="view">
+ <div class="panel"><div class="toolbar"><div><h2>Proveedores</h2><div class="muted">Panel de consulta. Las operaciones se registran desde Movimientos; aquí sólo ves el estado financiero de cada proveedor.</div></div><button class="btn primary" id="btnNewProvider">＋ Proveedor</button></div>
+ <div class="tableWrap"><table class="table"><thead><tr><th>Proveedor</th><th>Comprado</th><th>Pagado</th><th>Pendiente</th><th>Forma habitual</th><th>Acciones</th></tr></thead><tbody id="providersBody"></tbody></table></div>
+ <div class="panel" style="margin-top:15px"><h2>Pagos registrados</h2><div id="providerPayments"></div></div></div>
+</section>
+
+<section id="resultado" class="view">
+ <div class="panel">
+  <div class="toolbar">
+   <div><h2>Resultado financiero</h2><div class="muted">Resultado consolidado usando datos financieros y el resumen de Loyverse.</div></div>
+   <button class="btn primary" id="btnRefreshResult">Actualizar</button>
+  </div>
+  <div class="filters">
+   <select class="select" id="resultPeriod"><option value="month">Mes actual</option><option value="week">Semana actual</option><option value="custom">Personalizado</option></select>
+   <input class="input" id="resultFrom" type="date">
+   <input class="input" id="resultTo" type="date">
+  </div>
+  <div class="cards">
+   <div class="card"><div class="label">Ventas netas Loyverse</div><div class="number" id="resSales">$0.00</div></div>
+   <div class="card"><div class="label">Beneficio bruto Loyverse</div><div class="number green" id="resGross">$0.00</div></div>
+   <div class="card"><div class="label">Salidas financieras</div><div class="number red" id="resOut">$0.00</div></div>
+   <div class="card"><div class="label">Resultado de referencia</div><div class="number" id="resNet">$0.00</div></div>
+  </div>
+  <div class="columns">
+   <div class="panel"><h2>Resumen de Loyverse</h2><div id="loyverseSummary"></div><button class="btn primary" id="btnAddLoyverse">＋ Registrar resumen</button></div>
+   <div class="panel"><h2>Salidas por categoría</h2><div id="resultCategories"></div></div>
+  </div>
+  <div class="panel" style="margin-top:15px"><h2>Resumen del periodo</h2><div id="resultNarrative"></div></div>
+ </div>
+</section>
+
+<section id="compromisos" class="view">
+ <div class="panel"><div class="toolbar"><div><h2>Compromisos y deudas</h2><div class="muted">Los pagos generan automáticamente la salida financiera.</div></div><button class="btn primary" id="btnNewCommitment">＋ Compromiso</button></div>
+ <div class="tableWrap"><table class="table"><thead><tr><th>Concepto</th><th>Categoría</th><th>Total</th><th>Pagado</th><th>Pendiente</th><th>Fecha límite</th><th>Acciones</th></tr></thead><tbody id="commitmentsBody"></tbody></table></div>
+ <div class="panel" style="margin-top:15px"><h2>Pagos registrados</h2><div id="commitmentPayments"></div></div></div>
+</section>
+
+<section id="cortes" class="view">
+ <div class="panel"><div class="toolbar"><div><h2>Cortes financieros</h2><div class="muted">Diario, semanal, quincenal, mensual o personalizado.</div></div><button class="btn primary" id="btnNewCut">＋ Nuevo corte</button></div>
+ <div class="tableWrap"><table class="table"><thead><tr><th>Periodo</th><th>Tipo</th><th>Movimiento neto</th><th>Real contado</th><th>Diferencia</th><th>Nota</th></tr></thead><tbody id="cutsBody"></tbody></table></div></div>
+</section>
+
+<section id="conciliacion" class="view">
+ <div class="panel">
+  <div class="toolbar">
+   <div><h2>Conciliación de cajas</h2><div class="muted">Compara el efectivo teórico contra el dinero contado físicamente.</div></div>
+   <button class="btn primary" id="btnNewReconciliation">＋ Nueva conciliación</button>
+  </div>
+  <div class="notice">
+   La conciliación está pensada para la <b>Caja POS</b> y la <b>Caja Principal</b>. Una transferencia entre cajas no se considera gasto: únicamente cambia la ubicación del dinero.
+  </div>
+  <div class="tableWrap">
+   <table class="table"><thead><tr><th>Fecha / periodo</th><th>Caja</th><th>Saldo inicial</th><th>Entradas</th><th>Salidas</th><th>Teórico</th><th>Real</th><th>Diferencia</th><th></th></tr></thead>
+   <tbody id="reconciliationsBody"></tbody></table>
+  </div>
+ </div>
+</section>
+
+<section id="cierrepos" class="view">
+ <div class="panel">
+  <div class="toolbar">
+   <div><h2>Cierre de Caja POS</h2><div class="muted">Captura únicamente el resultado financiero de Loyverse, no las ventas individuales.</div></div>
+   <button class="btn primary" id="btnNewPOSClose">＋ Nuevo cierre</button>
+  </div>
+  <div class="notice">
+   <b>Loyverse sigue siendo el punto de venta.</b> Aquí registramos el resultado del periodo para conciliar el efectivo de Caja POS y, cuando corresponda, registrar el retiro hacia Caja Principal.
+  </div>
+  <div class="tableWrap">
+   <table class="table"><thead><tr>
+    <th>Periodo</th><th>Ventas Loyverse</th><th>Efectivo teórico</th><th>Gastos POS</th><th>Cambio dejado</th><th>Real contado</th><th>Diferencia</th><th>Retiro</th><th></th>
+   </tr></thead><tbody id="posClosesBody"></tbody></table>
+  </div>
+ </div>
+</section>
+
+<section id="datos" class="view">
+ <div class="panel">
+  <h2>Datos y respaldo</h2>
+  <div class="notice">Los datos se guardan localmente en este navegador. Antes de usar la aplicación como sistema real, descarga periódicamente un respaldo.</div>
+  <div class="actions">
+   <button class="btn primary" id="btnExportData">⇩ Exportar respaldo</button>
+   <button class="btn" id="btnImportData">⇧ Importar respaldo</button>
+   <button class="btn redBtn" id="btnResetData">Restablecer datos de prueba</button>
+  </div>
+  <input id="importFile" type="file" accept=".json,application/json" style="display:none">
+  <div class="panel" style="margin-top:15px">
+   <h2>Estado de los datos</h2>
+   <div id="dataStatus"></div>
+  </div>
+ </div>
+</section>
+
+<section id="catalogos" class="view">
+ <div class="panel"><div class="toolbar"><div><h2>Catálogos</h2><div class="muted">Categorías estandarizadas. Se pueden agregar, editar y activar/desactivar.</div></div><button class="btn primary" id="btnNewCategory">＋ Categoría</button></div>
+ <div class="columns">
+  <div class="panel"><h2>Entradas</h2><div id="catsEntrada"></div></div>
+  <div class="panel"><h2>Salidas</h2><div id="catsSalida"></div></div>
+ </div>
+ <div class="panel" style="margin-top:15px"><h2>Compromisos</h2><div id="catsCompromiso"></div></div>
+ </div>
+</section>
+<section id="payroll" class="view">
+  <div class="moduleHeader">
+    <div>
+      <div class="eyebrow">ADMINISTRACIÓN</div>
+      <h1>Nómina</h1>
+      <p class="moduleIntro">Controla los pagos de nómina. La futura app de Nómina podrá enviar los pagos automáticamente a Finanzas.</p>
+    </div>
+    <button class="btn primary" id="newPayrollEmployee">＋ Empleado</button>
+  </div>
+
+  <div class="moduleStats">
+    <div class="moduleStat"><span>Empleados activos</span><strong id="payrollActiveCount">0</strong></div>
+    <div class="moduleStat"><span>Pagado este periodo</span><strong id="payrollPeriodTotal">$0.00</strong></div>
+  </div>
+
+  <div class="panel modulePanel">
+    <div class="panelHeader">
+      <div><h2>Empleados</h2><p class="muted">Personal registrado para controlar sus pagos.</p></div>
+      <button class="btn" id="newPayrollEmployee2">＋ Agregar</button>
+    </div>
+    <div class="tableWrap">
+      <table class="table">
+        <thead><tr><th>Empleado</th><th>Pago habitual</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <tbody id="payrollEmployeesBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel modulePanel">
+    <div class="panelHeader">
+      <div><h2>Pagos realizados</h2><p class="muted">Cada pago descuenta automáticamente la cuenta seleccionada y genera un movimiento.</p></div>
+      <button class="btn primary" id="newPayrollPayment">＋ Registrar pago</button>
+    </div>
+    <div class="tableWrap">
+      <table class="table">
+        <thead><tr><th>Fecha</th><th>Empleado</th><th>Importe</th><th>Cuenta</th><th>Origen</th></tr></thead>
+        <tbody id="payrollPaymentsBody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="pagosfijos" class="view">
+  <div class="moduleHeader">
+    <div>
+      <div class="eyebrow">ADMINISTRACIÓN</div>
+      <h1>Pagos fijos</h1>
+      <p class="moduleIntro">Luz, internet, gas, renta y otros servicios. Un pendiente no afecta el dinero hasta que realmente se paga.</p>
+    </div>
+    <button class="btn primary" id="newFixedPayment">＋ Registrar pago</button>
+  </div>
+
+  <div class="moduleStats">
+    <div class="moduleStat"><span>Pendientes</span><strong id="fixedPendingTotal">$0.00</strong></div>
+    <div class="moduleStat"><span>Pagado este periodo</span><strong id="fixedPaidTotal">$0.00</strong></div>
+  </div>
+
+  <div class="panel modulePanel">
+    <div class="panelHeader">
+      <div><h2>Servicios y gastos</h2><p class="muted">Registra una obligación pendiente o marca directamente un pago realizado.</p></div>
+    </div>
+    <div class="tableWrap">
+      <table class="table">
+        <thead><tr><th>Concepto</th><th>Importe</th><th>Fecha</th><th>Estado</th><th>Cuenta</th><th>Acciones</th></tr></thead>
+        <tbody id="fixedPaymentsBody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+</main>
+</div>
+
+<div class="modal" id="modal"><div class="dialog" id="dialog"></div></div>
+
+
+
+
+
+
+<script>
+(function(){
+'use strict';
+
+const STORAGE='panorama_finanzas_pf_v1_010';
+const DEFAULT={
+ accounts:[
+  {id:'pos',name:'Caja POS',type:'Caja',balance:0,active:true},
+  {id:'principal',name:'Caja Principal',type:'Caja',balance:0,active:true},
+  {id:'mp',name:'Mercado Pago',type:'Cuenta digital',balance:0,active:true},
+  {id:'revolut',name:'Revolut',type:'Cuenta digital',balance:0,active:true}
+ ],
+ categories:{
+  entrada:[
+   ['ventas','Ventas'],['aportacion','Aportación'],['recuperacion','Recuperación de dinero'],['otros_ingresos','Otros ingresos']
+  ].map(x=>({id:x[0],name:x[1],active:true})),
+  salida:[
+   ['insumos','Insumos'],['inventario','Inventario'],['proveedores','Proveedores'],['mantenimiento','Mantenimiento'],
+   ['servicios','Servicios'],['limpieza','Limpieza'],['transporte','Transporte'],['comisiones','Comisiones'],
+   ['nomina','Nómina'],['administrativos','Gastos administrativos'],['papeleria','Papelería'],['tecnologia','Tecnología'],
+   ['marketing','Publicidad / Marketing'],['deudas','Deudas'],['tanda','Tanda'],['creditos','Créditos'],
+   ['apoyo_familiar','Apoyo familiar'],['infraestructura','Infraestructura'],['vehiculo','Vehículo'],['otros','Otros']
+  ].map(x=>({id:x[0],name:x[1],active:true})),
+  compromiso:[
+   ['tanda','Tanda'],['credito','Crédito'],['deuda','Deuda'],['pago_pendiente','Pago pendiente'],
+   ['nomina','Nómina'],['impuesto','Impuesto'],['servicio','Servicio'],['otro_compromiso','Otro compromiso']
+  ].map(x=>({id:x[0],name:x[1],active:true}))
+ },
+ moves:[],providers:[],commitments:[],cuts:[],providerPayments:[],commitmentPayments:[],reconciliations:[],posCloses:[],adjustments:[],loyverseSummaries:[]
+};
+
+let db=load();
+
+function clone(o){return JSON.parse(JSON.stringify(o))}
+function load(){
+ try{
+  const saved=JSON.parse(localStorage.getItem(STORAGE));
+  if(!saved) return clone(DEFAULT);
+  const d=saved;
+  d.accounts=d.accounts||clone(DEFAULT.accounts);
+  d.categories=d.categories||clone(DEFAULT.categories);
+  d.categories.entrada=d.categories.entrada||[];
+  d.categories.salida=d.categories.salida||[];
+  d.categories.compromiso=d.categories.compromiso||[];
+  d.moves=d.moves||[]; d.providers=d.providers||[]; d.commitments=d.commitments||[]; d.cuts=d.cuts||[];
+  d.providerPayments=d.providerPayments||[]; d.commitmentPayments=d.commitmentPayments||[]; d.reconciliations=d.reconciliations||[]; d.posCloses=d.posCloses||[]; d.adjustments=d.adjustments||[]; d.loyverseSummaries=d.loyverseSummaries||[];
+  return d;
+ }catch(e){return clone(DEFAULT)}
+}
+function save(){localStorage.setItem(STORAGE,JSON.stringify(db));renderAll()}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]})}
+function money(n){return new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN'}).format(Number(n)||0)}
+function today(){return new Date().toISOString().slice(0,10)}
+function getAccount(i){return db.accounts.find(a=>a.id===i)}
+function getCategory(type,i){return (db.categories[type]||[]).find(c=>c.id===i)}
+function categoryName(type,i){const c=getCategory(type,i);return c?c.name:(i||'')}
+function accountOptions(exclude){
+ return db.accounts.filter(a=>a.active&&a.id!==exclude).map(a=>'<option value="'+a.id+'">'+esc(a.name)+'</option>').join('');
+}
+function categoryOptions(type){
+ return '<option value="">Seleccionar...</option>'+db.categories[type].filter(c=>c.active).map(c=>'<option value="'+c.id+'">'+esc(c.name)+'</option>').join('');
+}
+function openModal(content){document.getElementById('dialog').innerHTML=content;document.getElementById('modal').classList.add('open')}
+function closeModal(){document.getElementById('modal').classList.remove('open')}
+document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeModal()});
+
+const titles={dashboard:'Posición financiera',movimientos:'Movimientos',cuentas:'Cuentas y dinero',proveedores:'Proveedores',payroll:'Nómina',pagosfijos:'Pagos fijos',resultado:'Resultado financiero',compromisos:'Compromisos y deudas',cortes:'Cortes financieros',conciliacion:'Conciliación de cajas',cierrepos:'Cierre de Caja POS',catalogos:'Catálogos',datos:'Datos y respaldo'};
+document.querySelectorAll('.nav button').forEach(function(btn){
+ btn.addEventListener('click',function(){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  const target=document.getElementById(btn.dataset.view);
+  if(target) target.classList.add('active');
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('title').textContent=titles[btn.dataset.view]||'Panorama Finanzas';
+  window.scrollTo(0,0);
+ });
+});
+
+function renderAll(){renderDashboard();renderMoves();renderAccounts();renderProviders();renderCommitments();renderCuts();renderCategories();renderPayments();renderReconciliations();renderPOSCloses();renderDataStatus();renderResult()}
+renderPayroll();renderFixedPayments();
+
+function accountKind(a){
+ const n=(a?.name||'').toLowerCase();
+ if(a?.type==='Caja'||n.includes('caja')||n.includes('efectivo')) return 'Efectivo';
+ return 'Digital';
+}
+function accountKindIcon(a){ return accountKind(a)==='Efectivo'?'💵':'🏦'; }
+
+
+function renderDashboard(){
+ const total=db.accounts.reduce((s,a)=>s+Number(a.balance||0),0);
+ const committed=db.providers.reduce((s,p)=>s+Math.max(0,Number(p.total||0)-Number(p.paid||0)),0)+
+                  db.commitments.reduce((s,c)=>s+Math.max(0,Number(c.total||0)-Number(c.paid||0)),0);
+ document.getElementById('totalMoney').textContent=money(total);
+ document.getElementById('totalCommitted').textContent=money(committed);
+ document.getElementById('freeMoney').textContent=money(total-committed);
+ document.getElementById('moveCount').textContent=db.moves.length;
+ document.getElementById('dashboardAccounts').innerHTML=db.accounts.filter(a=>a.active!==false).map(a=>'<div class="row"><div><b>'+accountKindIcon(a)+' '+esc(a.name)+'</b><div class="muted">'+esc(accountKind(a))+'</div></div><strong>'+money(a.balance)+'</strong></div>').join('')||'<div class="empty">Sin cuentas.</div>';
+ const r=db.moves.slice().sort(function(a,b){return b.created-a.created}).slice(0,6);
+ document.getElementById('dashboardMoves').innerHTML=r.map(function(m){
+  const acc=getAccount(m.from||m.account);
+  const sign=m.type==='salida'?'−':m.type==='entrada'?'+':'';
+  return '<div class="row"><div><span class="pill '+(m.type==='entrada'?'in':m.type==='salida'?'out':'tr')+'">'+esc(m.type)+'</span> <b>'+esc(m.concept)+'</b><div class="muted">'+m.date+' · '+esc(acc?acc.name:'')+'</div></div><strong>'+sign+money(m.amount)+'</strong></div>';
+ }).join('')||'<div class="empty">Sin movimientos.</div>';
+}
+
+function movementOriginLabel(m){
+ const o=m.origin||m.source||'manual';
+ const labels={
+  proveedores:'Proveedores',
+  nomina:'Nómina',
+  pagos_fijos:'Pagos fijos',
+  compromisos:'Compromisos',
+  loyverse:'Loyverse',
+  manual:'Manual',
+  ajuste:'Ajuste de saldo'
+ };
+ return labels[o]||o;
+}
+
+function renderMoves(){
+ const body=document.getElementById('movesBody');if(!body)return;
+ const rows=(db.moves||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.created||0)-(a.created||0));
+ body.innerHTML=rows.map(function(m){
+   const acc=getAccount(m.account||m.from);
+   const amount=Number(m.amount||0);
+   const sign=m.type==='entrada'?'+':m.type==='transferencia'?'↔':'−';
+   return '<tr>'+
+    '<td>'+esc(m.date||'')+'</td>'+
+    '<td><b>'+esc(m.concept||'Movimiento')+'</b><div class="muted">'+esc(m.note||'')+'</div></td>'+
+    '<td>'+esc(movementOriginLabel(m))+'</td>'+
+    '<td>'+esc(acc?.name||'—')+'</td>'+
+    '<td class="'+(m.type==='entrada'?'green':'red')+'"><strong>'+sign+money(amount)+'</strong></td>'+
+    '<td><button class="btn" data-view-movement="'+m.id+'">Ver</button></td>'+
+   '</tr>';
+ }).join('')||'<tr><td colspan="6"><div class="empty">No hay movimientos.</div></td></tr>';
+ document.querySelectorAll('[data-view-movement]').forEach(b=>b.addEventListener('click',function(){openMovementDetail(b.dataset.viewMovement)}));
+}
+function openMovementDetail(id){
+ const m=(db.moves||[]).find(x=>x.id===id);if(!m)return;
+ const acc=getAccount(m.account||m.from),to=getAccount(m.to);
+ const origin=movementOriginLabel(m);
+ openModal('<h2>Detalle del movimiento</h2>'+
+  '<div class="row"><span>Fecha</span><b>'+esc(m.date||'')+'</b></div>'+
+  '<div class="row"><span>Concepto</span><b>'+esc(m.concept||'Movimiento')+'</b></div>'+
+  '<div class="row"><span>Origen</span><b>'+esc(origin)+'</b></div>'+
+  '<div class="row"><span>Cuenta afectada</span><b>'+esc(acc?.name||'—')+'</b></div>'+
+  (to?'<div class="row"><span>Destino</span><b>'+esc(to.name)+'</b></div>':'')+
+  '<div class="row"><span>Importe</span><b>'+money(m.amount||0)+'</b></div>'+
+  (m.externalId?'<div class="row"><span>Referencia externa</span><b>'+esc(m.externalId)+'</b></div>':'')+
+  '<div class="row"><span>Tipo</span><b>'+esc(m.type||'')+'</b></div>'+
+  '<div class="row"><span>Nota</span><b>'+esc(m.note||'—')+'</b></div>'+
+  '<div class="modalActions"><button class="btn" id="cancelModal">Cerrar</button></div>');
+ document.getElementById('cancelModal').addEventListener('click',closeModal);
+}
+
+function renderAccounts(){
+ const body=document.getElementById('accountsBody');
+ if(!body)return;
+ const accounts=(db.accounts||[]).filter(a=>a.active!==false);
+ body.innerHTML=accounts.map(function(a){
+   return '<tr>'+
+    '<td><b>'+accountKindIcon(a)+' '+esc(a.name)+'</b><div class="muted">'+esc(accountKind(a))+'</div></td>'+
+    '<td><strong>'+money(Number(a.balance||0))+'</strong></td>'+
+    '<td>'+esc(a.type||'')+'</td>'+
+    '<td><div class="actions">'+
+      '<button class="btn" data-edit-account="'+a.id+'">✏ Editar</button>'+
+      '<button class="btn" data-adjust-account="'+a.id+'">⚖ Ajustar saldo</button>'+
+      '<button class="btn" data-adjust-history="'+a.id+'">Historial</button>'+
+      '<button class="btn danger" data-del-account="'+a.id+'">Eliminar</button>'+
+    '</div></td>'+
+   '</tr>';
+ }).join('')||'<tr><td colspan="4"><div class="empty">No hay cuentas activas.</div></td></tr>';
+
+ document.querySelectorAll('[data-edit-account]').forEach(b=>b.addEventListener('click',function(){
+   openAccount(b.dataset.editAccount);
+ }));
+ document.querySelectorAll('[data-adjust-account]').forEach(b=>b.addEventListener('click',function(){
+   openAccountAdjustment(b.dataset.adjustAccount);
+ }));
+ document.querySelectorAll('[data-adjust-history]').forEach(b=>b.addEventListener('click',function(){
+   openAdjustmentHistory(b.dataset.adjustHistory);
+ }));
+ document.querySelectorAll('[data-del-account]').forEach(b=>b.addEventListener('click',function(){
+   deleteAccount(b.dataset.delAccount);
+ }));
+}
+
+function providerFinancials(pid){
+ const purchases=db.moves.filter(m=>m.linkedType==='providerPurchase'&&m.linkedId===pid);
+ const payments=db.providerPayments.filter(p=>p.providerId===pid);
+ const purchased=purchases.reduce((s,m)=>s+Number(m.amount),0);
+ const paid=payments.reduce((s,p)=>s+Number(p.amount),0);
+ const p=db.providers.find(x=>x.id===pid);
+ return {purchased,paid,pending:Number(p?.creditBalance||0),purchases,payments};
+}
+function deleteAccount(id){
+ const a=getAccount(id);if(!a)return;
+ const hasMoves=(db.moves||[]).some(m=>m.account===id||m.from===id||m.to===id);
+ const hasClosures=(db.cuts||[]).some(c=>c.accountId===id);
+ if(hasMoves||hasClosures){
+   if(confirm('Esta cuenta tiene movimientos o cierres. No se eliminará para no romper el historial. ¿Quieres marcarla como inactiva?')){
+     a.active=false;save();
+   }
+   return;
+ }
+ if(confirm('¿Eliminar definitivamente la cuenta "'+a.name+'"?')){
+   db.accounts=db.accounts.filter(x=>x.id!==id);save();
+ }
+}
+
+function providerPurchaseTotal(pid){return (db.providerPurchases||[]).filter(x=>x.providerId===pid).reduce((s,x)=>s+Number(x.amount||0),0)}
+function providerPaidTotal(pid){return (db.providerPayments||[]).filter(x=>x.providerId===pid).reduce((s,x)=>s+Number(x.amount||0),0)}
+function providerPending(pid){return Number(db.providers.find(x=>x.id===pid)?.creditBalance||0)}
+
+function renderPayroll(){
+ const eb=document.getElementById('payrollEmployeesBody'),pb=document.getElementById('payrollPaymentsBody');
+ const active=(db.payrollEmployees||[]).filter(e=>e.active!==false);
+ if(eb){
+  eb.innerHTML=active.map(e=>'<tr><td><b>'+esc(e.name)+'</b></td><td>'+money(e.defaultPay||0)+'</td><td><span class="statusPill">Activo</span></td><td><button class="btn" data-edit-payroll="'+e.id+'">Editar</button></td></tr>').join('')||'<tr><td colspan="4"><div class="empty">Sin empleados registrados.</div></td></tr>';
+  document.querySelectorAll('[data-edit-payroll]').forEach(b=>b.addEventListener('click',()=>openPayrollEmployee(b.dataset.editPayroll)));
+ }
+ if(pb){
+  pb.innerHTML=(db.payrollPeriods||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(x=>'<tr><td>'+esc(x.date)+'</td><td><b>'+esc(x.employeeName)+'</b></td><td>'+money(x.amount)+'</td><td>'+esc(getAccount(x.accountId)?.name||'—')+'</td><td><span class="originPill">'+esc(x.origin==='external'?'App de Nómina':'Local')+'</span></td></tr>').join('')||'<tr><td colspan="5"><div class="empty">Aún no hay pagos de nómina.</div></td></tr>';
+ }
+ const count=document.getElementById('payrollActiveCount'),total=document.getElementById('payrollPeriodTotal');
+ if(count)count.textContent=active.length;
+ if(total)total.textContent=money((db.payrollPeriods||[]).reduce((s,x)=>s+Number(x.amount||0),0));
+}
+
+function openPayrollEmployee(id){const e=id?db.payrollEmployees.find(x=>x.id===id):null;openModal('<h2>'+(e?'Editar empleado':'Nuevo empleado')+'</h2><form id="payrollEmployeeForm"><div class="formGrid"><div class="field"><label>Nombre</label><input class="input" name="name" value="'+esc(e?.name||'')+'" required></div><div class="field"><label>Pago habitual</label><input class="input" name="pay" type="number" min="0" step="0.01" value="'+Number(e?.defaultPay||0)+'" required></div></div><div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Guardar</button></div></form>');document.getElementById('cancelModal').addEventListener('click',closeModal);document.getElementById('payrollEmployeeForm').addEventListener('submit',ev=>{ev.preventDefault();const f=new FormData(ev.target);if(e){e.name=f.get('name').trim();e.defaultPay=Number(f.get('pay'))}else db.payrollEmployees.push({id:uid(),name:f.get('name').trim(),defaultPay:Number(f.get('pay')),active:true});save();closeModal()})}
+function openPayrollPayment(){const em=db.payrollEmployees;if(!em.length){alert('Primero agrega un empleado.');return}openModal('<h2>Registrar pago de nómina</h2><form id="payrollPaymentForm"><div class="formGrid"><div class="field"><label>Empleado</label><select class="select" name="employee">'+em.map(e=>'<option value="'+e.id+'">'+esc(e.name)+'</option>').join('')+'</select></div><div class="field"><label>Importe</label><input class="input" name="amount" type="number" min="0.01" step="0.01" required></div><div class="field"><label>Cuenta / dinero</label><select class="select" name="account">'+accountOptions()+'</select></div><div class="field"><label>Fecha</label><input class="input" name="date" type="date" value="'+today()+'" required></div><div class="field"><label>Origen</label><select class="select" name="origin"><option value="local">Local / excepción</option><option value="external">App de Nómina</option></select></div><div class="field"><label>Referencia externa</label><input class="input" name="externalId"></div></div><div class="notice">Cuando exista la integración, el pago podrá llegar desde la app de Nómina sin recapturarlo.</div><div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Pagar</button></div></form>');document.getElementById('cancelModal').addEventListener('click',closeModal);document.getElementById('payrollPaymentForm').addEventListener('submit',ev=>{ev.preventDefault();const f=new FormData(ev.target),e=em.find(x=>x.id===f.get('employee')),amount=Number(f.get('amount')),acc=getAccount(f.get('account'));if(!e||amount<=0||!acc||acc.balance<amount){alert('Revisa los datos y el saldo.');return}acc.balance-=amount;const rec={id:uid(),created:Date.now(),employeeId:e.id,employeeName:e.name,amount,accountId:acc.id,date:f.get('date'),origin:f.get('origin'),externalId:f.get('externalId')||''};db.payrollPeriods.push(rec);db.moves.push({id:uid(),created:Date.now(),origin:'nomina',externalId:rec.externalId,sourceRecordId:rec.id,type:'salida',date:rec.date,amount,concept:'Nómina — '+e.name,category:'nomina',from:acc.id,to:null,account:acc.id,note:'Pago de nómina'});save();closeModal()})}
+
+function renderFixedPayments(){
+ const body=document.getElementById('fixedPaymentsBody');if(!body)return;
+ const rows=(db.fixedPayments||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+ body.innerHTML=rows.map(x=>'<tr><td><b>'+esc(x.concept)+'</b></td><td>'+money(x.amount)+'</td><td>'+esc(x.date)+'</td><td><span class="'+(x.status==='pagado'?'green':'red')+'">'+(x.status==='pagado'?'Pagado':'Pendiente')+'</span></td><td>'+esc(getAccount(x.accountId)?.name||'—')+'</td><td><button class="btn" data-fixed="'+x.id+'">'+(x.status==='pagado'?'Ver':'Pagar')+'</button></td></tr>').join('')||'<tr><td colspan="6"><div class="empty">No hay pagos fijos registrados.</div></td></tr>';
+ document.querySelectorAll('[data-fixed]').forEach(b=>b.addEventListener('click',()=>openFixedPayment(b.dataset.fixed)));
+ const pending=document.getElementById('fixedPendingTotal'),paid=document.getElementById('fixedPaidTotal');
+ if(pending)pending.textContent=money(rows.filter(x=>x.status!=='pagado').reduce((s,x)=>s+Number(x.amount||0),0));
+ if(paid)paid.textContent=money(rows.filter(x=>x.status==='pagado').reduce((s,x)=>s+Number(x.amount||0),0));
+}
+
+function openFixedPayment(id){const x=id?db.fixedPayments.find(a=>a.id===id):null;openModal('<h2>'+(x?'Pago fijo':'Nuevo pago fijo')+'</h2><form id="fixedPaymentForm"><div class="formGrid"><div class="field"><label>Concepto</label><input class="input" name="concept" value="'+esc(x?.concept||'')+'" placeholder="Ej. Internet" required></div><div class="field"><label>Importe</label><input class="input" name="amount" type="number" min="0.01" step="0.01" value="'+Number(x?.amount||0)+'" required></div><div class="field"><label>Fecha</label><input class="input" name="date" type="date" value="'+esc(x?.date||today())+'" required></div><div class="field"><label>Estado</label><select class="select" name="status"><option value="pendiente">Pendiente</option><option value="pagado">Pagado</option></select></div><div class="field"><label>Cuenta / dinero</label><select class="select" name="account">'+accountOptions()+'</select></div></div><div class="notice">Pendiente no genera movimiento. Pagado sí genera una salida y descuenta la cuenta.</div><div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Guardar</button></div></form>');const f=document.getElementById('fixedPaymentForm');if(x){f.querySelector('[name="status"]').value=x.status;f.querySelector('[name="account"]').value=x.accountId||''}document.getElementById('cancelModal').addEventListener('click',closeModal);f.addEventListener('submit',ev=>{ev.preventDefault();const d=new FormData(f),amount=Number(d.get('amount')),status=d.get('status'),acc=getAccount(d.get('account'));if(amount<=0){alert('Importe inválido.');return}if(status==='pagado'&&(!acc||acc.balance<amount)){alert('Saldo insuficiente.');return}if(x){if(x.status!=='pagado'&&status==='pagado'){acc.balance-=amount;db.moves.push({id:uid(),created:Date.now(),origin:'pagos_fijos',sourceRecordId:x.id,type:'salida',date:d.get('date'),amount,concept:d.get('concept'),category:'pagos_fijos',from:acc.id,to:null,account:acc.id,note:''})}x.concept=d.get('concept');x.amount=amount;x.date=d.get('date');x.status=status;x.accountId=status==='pagado'?acc.id:null}else{const r={id:uid(),created:Date.now(),concept:d.get('concept'),amount,date:d.get('date'),status,accountId:status==='pagado'?acc.id:null};db.fixedPayments.push(r);if(status==='pagado'){acc.balance-=amount;db.moves.push({id:uid(),created:Date.now(),origin:'pagos_fijos',sourceRecordId:r.id,type:'salida',date:r.date,amount,concept:r.concept,category:'pagos_fijos',from:acc.id,to:null,account:acc.id,note:''})}}save();closeModal()})}
+document.getElementById('newPayrollEmployee')?.addEventListener('click',()=>openPayrollEmployee());document.getElementById('newPayrollPayment')?.addEventListener('click',openPayrollPayment);document.getElementById('newFixedPayment')?.addEventListener('click',()=>openFixedPayment());
+document.getElementById('newPayrollEmployee2')?.addEventListener('click',()=>openPayrollEmployee());
+function renderProviders(){
+ const body=document.getElementById('providersBody');if(!body)return;
+ body.innerHTML=(db.providers||[]).map(p=>'<tr><td><b>'+esc(p.name)+'</b></td><td>'+money(providerPurchaseTotal(p.id))+'</td><td>'+money(providerPaidTotal(p.id))+'</td><td class="'+(providerPending(p.id)?'red':'green')+'"><b>'+money(providerPending(p.id))+'</b></td><td><div class="actions"><button class="btn primary" data-provider-purchase="'+p.id+'">＋ Compra</button><button class="btn" data-provider-payment="'+p.id+'">＋ Abonar</button><button class="btn" data-view-provider="'+p.id+'">Ver</button><button class="btn" data-edit-provider="'+p.id+'">Editar</button><button class="btn danger" data-del-provider="'+p.id+'">Eliminar</button></div></td></tr>').join('')||'<tr><td colspan="5"><div class="empty">No hay proveedores.</div></td></tr>';
+ document.querySelectorAll('[data-provider-purchase]').forEach(b=>b.addEventListener('click',()=>openProviderPurchase(b.dataset.providerPurchase)));
+ document.querySelectorAll('[data-provider-payment]').forEach(b=>b.addEventListener('click',()=>openProviderPayment(b.dataset.providerPayment)));
+ document.querySelectorAll('[data-view-provider]').forEach(b=>b.addEventListener('click',()=>openProviderDashboard(b.dataset.viewProvider)));
+ document.querySelectorAll('[data-edit-provider]').forEach(b=>b.addEventListener('click',()=>openProvider(b.dataset.editProvider)));
+ document.querySelectorAll('[data-del-provider]').forEach(b=>b.addEventListener('click',()=>deleteProvider(b.dataset.delProvider)));
+}
+
+function renderCommitments(){
+ document.getElementById('commitmentsBody').innerHTML=db.commitments.map(function(c){
+  const due=Math.max(0,Number(c.total)-Number(c.paid));
+  return '<tr><td><b>'+esc(c.name)+'</b></td><td>'+esc(categoryName('compromiso',c.category))+'</td><td>'+money(c.total)+'</td><td>'+money(c.paid)+'</td><td class="'+(due?'red':'green')+'"><b>'+money(due)+'</b></td><td>'+esc(c.dueDate||'—')+'</td><td><div class="actions"><button class="btn greenBtn" data-pay-commitment="'+c.id+'">Registrar pago</button><button class="btn" data-del-commitment="'+c.id+'">Eliminar</button></div></td></tr>';
+ }).join('')||'<tr><td colspan="7"><div class="empty">Sin compromisos.</div></td></tr>';
+ document.querySelectorAll('[data-pay-commitment]').forEach(function(b){b.addEventListener('click',function(){openCommitmentPayment(b.dataset.payCommitment)})});
+ document.querySelectorAll('[data-del-commitment]').forEach(function(b){b.addEventListener('click',function(){deleteCommitment(b.dataset.delCommitment)})});
+}
+
+function renderCuts(){
+ document.getElementById('cutsBody').innerHTML=db.cuts.map(function(c){
+  const diff=Number(c.real)-Number(c.expected);
+  return '<tr><td>'+esc(c.period)+'</td><td>'+esc(c.type)+'</td><td>'+money(c.expected)+'</td><td>'+money(c.real)+'</td><td class="'+(diff===0?'green':'red')+'"><b>'+money(diff)+'</b></td><td>'+esc(c.note||'')+'</td></tr>';
+ }).join('')||'<tr><td colspan="6"><div class="empty">Sin cortes.</div></td></tr>';
+}
+
+function renderCategories(){
+ ['entrada','salida','compromiso'].forEach(function(type){
+  const id='cats'+type.charAt(0).toUpperCase()+type.slice(1);
+  const el=document.getElementById(id);if(!el)return;
+  el.innerHTML=db.categories[type].map(function(c){
+   return '<div class="row"><div><b>'+esc(c.name)+'</b><div class="muted">'+(c.active?'Activa':'Inactiva')+'</div></div><div class="actions"><button class="btn" data-edit-cat="'+type+'|'+c.id+'">Editar</button><button class="btn" data-toggle-cat="'+type+'|'+c.id+'">'+(c.active?'Desactivar':'Activar')+'</button></div></div>';
+  }).join('')||'<div class="empty">Sin categorías.</div>';
+ });
+ document.querySelectorAll('[data-edit-cat]').forEach(function(b){b.addEventListener('click',function(){const x=b.dataset.editCat.split('|');openCategory(x[0],x[1])})});
+ document.querySelectorAll('[data-toggle-cat]').forEach(function(b){b.addEventListener('click',function(){const x=b.dataset.toggleCat.split('|');toggleCategory(x[0],x[1])})});
+}
+
+function renderPayments(){
+ const pp=document.getElementById('providerPayments');
+ const cp=document.getElementById('commitmentPayments');
+ pp.innerHTML=db.providerPayments.slice().sort((a,b)=>b.created-a.created).map(function(p){
+  const prov=db.providers.find(x=>x.id===p.providerId), acc=getAccount(p.accountId);
+  return '<div class="row"><div><b>'+esc(prov?prov.name:'Proveedor eliminado')+'</b><div class="muted">'+p.date+' · '+esc(acc?acc.name:'')+' · '+esc(p.note||'')+'</div></div><div class="actions"><strong class="red">−'+money(p.amount)+'</strong><button class="btn" data-edit-provider-payment="'+p.id+'">Editar</button><button class="btn" data-del-provider-payment="'+p.id+'">Eliminar</button></div></div>';
+ }).join('')||'<div class="empty">Sin pagos de proveedores.</div>';
+ cp.innerHTML=db.commitmentPayments.slice().sort((a,b)=>b.created-a.created).map(function(p){
+  const c=db.commitments.find(x=>x.id===p.commitmentId), acc=getAccount(p.accountId);
+  return '<div class="row"><div><b>'+esc(c?c.name:'Compromiso eliminado')+'</b><div class="muted">'+p.date+' · '+esc(acc?acc.name:'')+' · '+esc(p.note||'')+'</div></div><div class="actions"><strong class="red">−'+money(p.amount)+'</strong><button class="btn" data-edit-commitment-payment="'+p.id+'">Editar</button><button class="btn" data-del-commitment-payment="'+p.id+'">Eliminar</button></div></div>';
+ }).join('')||'<div class="empty">Sin pagos de compromisos.</div>';
+
+ document.querySelectorAll('[data-edit-provider-payment]').forEach(function(b){b.addEventListener('click',function(){editPayment('provider',b.dataset.editProviderPayment)})});
+ document.querySelectorAll('[data-del-provider-payment]').forEach(function(b){b.addEventListener('click',function(){deletePayment('provider',b.dataset.delProviderPayment)})});
+ document.querySelectorAll('[data-edit-commitment-payment]').forEach(function(b){b.addEventListener('click',function(){editPayment('commitment',b.dataset.editCommitmentPayment)})});
+ document.querySelectorAll('[data-del-commitment-payment]').forEach(function(b){b.addEventListener('click',function(){deletePayment('commitment',b.dataset.delCommitmentPayment)})});
+}
+
+function findPayment(kind,pid){
+ return (kind==='provider'?db.providerPayments:db.commitmentPayments).find(p=>p.id===pid);
+}
+function linkedEntity(kind,p){
+ return kind==='provider'?db.providers.find(x=>x.id===p.providerId):db.commitments.find(x=>x.id===p.commitmentId);
+}
+function editPayment(kind,pid){
+ const list=kind==='provider'?db.providerPayments:db.commitmentPayments;
+ const p=findPayment(kind,pid), entity=linkedEntity(kind,p);
+ if(!p||!entity)return;
+ const otherPaid=Math.max(0,Number(entity.paid||0)-Number(p.amount||0));
+ openModal('<h2>Editar pago</h2><div class="notice"><b>'+esc(entity.name)+'</b><br>Este cambio corregirá también el movimiento financiero.</div>'+
+ '<form id="editPaymentForm"><div class="formGrid">'+
+ '<div class="field"><label>Fecha</label><input class="input" name="date" type="date" value="'+esc(p.date)+'" required></div>'+
+ '<div class="field"><label>Importe</label><input class="input" name="amount" type="number" min="0.01" step="0.01" value="'+Number(p.amount)+'" required></div>'+
+ '<div class="field"><label>Cuenta / caja</label><select class="select" name="account">'+accountOptions()+'</select></div>'+
+ '<div class="field"><label>Nota</label><input class="input" name="note" value="'+esc(p.note||'')+'"></div>'+
+ '</div><div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Guardar cambios</button></div></form>');
+ document.querySelector('#editPaymentForm select[name="account"]').value=p.accountId;
+ document.getElementById('cancelModal').addEventListener('click',closeModal);
+ document.getElementById('editPaymentForm').addEventListener('submit',function(e){
+  e.preventDefault();
+  const f=new FormData(e.target), amount=Number(f.get('amount')), newAcc=getAccount(f.get('account')), oldAcc=getAccount(p.accountId);
+  if(amount<=0||!newAcc||!oldAcc){alert('Revisa importe y cuenta.');return}
+  if(amount>otherPaid+amount && false)return;
+  // Restore old payment effect first.
+  if(oldAcc) oldAcc.balance+=Number(p.amount);
+  entity.paid=otherPaid;
+  // Then apply new payment effect.
+  if(newAcc.id!==oldAcc.id && newAcc.balance<amount){oldAcc.balance-=Number(p.amount);entity.paid+=Number(p.amount);alert('La nueva cuenta no tiene saldo suficiente.');return}
+  if(newAcc.balance<amount){oldAcc.balance-=Number(p.amount);entity.paid+=Number(p.amount);alert('La cuenta no tiene saldo suficiente para ese pago.');return}
+  newAcc.balance-=amount;
+  entity.paid+=amount;
+  p.amount=amount;p.accountId=newAcc.id;p.date=f.get('date');p.note=f.get('note');
+  const mv=db.moves.find(m=>m.linkedType===kind&&m.linkedId===entity.id&&m.amount===Number(document.querySelector('#editPaymentForm input[name="amount"]').defaultValue));
+  // Match the linked movement by payment metadata stored below; fall back to latest matching movement.
+  let linked=db.moves.find(m=>m.paymentId===p.id);
+  if(!linked) linked=db.moves.slice().reverse().find(m=>m.linkedType===kind&&m.linkedId===entity.id&&m.type==='salida');
+  if(linked){linked.amount=amount;linked.account=newAcc.id;linked.from=newAcc.id;linked.date=p.date;linked.note=p.note;linked.concept='Pago — '+entity.name}
+  save();closeModal();
+ });
+}
+function deletePayment(kind,pid){
+ const list=kind==='provider'?db.providerPayments:db.commitmentPayments;
+ const idx=list.findIndex(p=>p.id===pid);if(idx<0)return;
+ const p=list[idx], entity=linkedEntity(kind,p), acc=getAccount(p.accountId);
+ if(!confirm('¿Eliminar este pago? Se revertirá la salida financiera y el saldo pendiente.'))return;
+ if(acc)acc.balance+=Number(p.amount);
+ if(entity)entity.paid=Math.max(0,Number(entity.paid)-Number(p.amount));
+ db.moves=db.moves.filter(m=>m.paymentId!==pid);
+ list.splice(idx,1);
+ save();
+}
+
+function openMovement(type){
+ const isOut=type==='salida',providers=db.providers||[],transfer=type==='transferencia';
+ if(transfer){
+  openModal('<h2>Nueva transferencia</h2><form id="movementForm"><div class="formGrid"><div class="field"><label>Fecha</label><input class="input" name="date" type="date" value="'+today()+'" required></div><div class="field"><label>Importe</label><input class="input" name="amount" type="number" min="0.01" step="0.01" required></div><div class="field"><label>Origen</label><select class="select" name="from">'+accountOptions()+'</select></div><div class="field"><label>Destino</label><select class="select" name="to">'+accountOptions()+'</select></div><div class="field full"><label>Nota</label><input class="input" name="note"></div></div><div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Guardar</button></div></form>');
+  document.getElementById('cancelModal').addEventListener('click',closeModal);
+  document.getElementById('movementForm').addEventListener('submit',function(e){e.preventDefault();const f=new FormData(e.target),amt=Number(f.get('amount')),from=getAccount(f.get('from')),to=getAccount(f.get('to'));if(amt<=0||!from||!to||from.id===to.id){alert('Revisa origen, destino e importe.');return}if(from.balance<amt){alert('La cuenta de origen no tiene saldo suficiente.');return}from.balance-=amt;to.balance+=amt;db.moves.push({id:uid(),created:Date.now(),origin:'manual',type:'transferencia',date:f.get('date'),amount:amt,concept:'Transferencia',category:'',from:from.id,to:to.id,account:from.id,note:f.get('note')});save();closeModal()});return;
+ }
+ openModal('<h2>'+ (isOut?'Nueva salida':'Nueva entrada') +'</h2><form id="movementForm"><div class="formGrid"><div class="field"><label>Fecha</label><input class="input" name="date" type="date" value="'+today()+'" required></div><div class="field"><label>Importe</label><input class="input" name="amount" type="number" min="0.01" step="0.01" required></div>'+
+ (isOut?'<div class="field"><label>Categoría</label><select class="select" name="category">'+categoryOptions('salida')+'</select></div>':'')+
+ '<div class="field"><label>Cuenta / dinero</label><select class="select" name="account">'+accountOptions()+'</select></div>'+
+ '<div class="field"><label>Origen del registro</label><select class="select" name="origin"><option value="manual">Manual / excepción</option><option value="nomina">Nómina externa</option><option value="loyverse">Loyverse</option></select></div>'+
+ '<div class="field"><label>Referencia externa (opcional)</label><input class="input" name="externalId" placeholder="ID de nómina, folio, etc."></div>'+
+ '<div class="field full"><label>Concepto / Nota</label><input class="input" name="note"></div></div><div class="notice">En el uso normal, los módulos de Proveedores, Nómina, Pagos fijos y Compromisos generarán estos movimientos automáticamente. Este formulario queda para excepciones o registros externos.</div><div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Guardar</button></div></form>');
+ const form=document.getElementById('movementForm'),account=form.querySelector('[name="account"]');
+ document.getElementById('cancelModal').addEventListener('click',closeModal);
+ form.addEventListener('submit',function(e){
+  e.preventDefault();
+  const f=new FormData(form),amount=Number(f.get('amount')),acc=getAccount(f.get('account'));
+  if(amount<=0||!acc){alert('Revisa importe y cuenta.');return}
+  if(isOut&&acc.balance<amount){alert('La cuenta no tiene saldo suficiente.');return}
+  if(isOut)acc.balance-=amount;else acc.balance+=amount;
+  db.moves.push({id:uid(),created:Date.now(),origin:f.get('origin')||'manual',externalId:f.get('externalId')||'',type:isOut?'salida':'entrada',date:f.get('date'),amount,concept:f.get('note')|| (isOut?'Salida manual':'Entrada manual'),category:f.get('category')||'',from:isOut?acc.id:null,to:isOut?null:acc.id,account:acc.id,note:f.get('note')});
+  save();closeModal();
+ });
+}
+
+function registerIntegrationEvent(payload){
+ const p=payload||{};
+ const event={
+  id:p.id||uid(),
+  source:p.source||'external',
+  type:p.type||'financial_event',
+  externalId:p.externalId||'',
+  date:p.date||today(),
+  amount:Number(p.amount||0),
+  accountId:p.accountId||null,
+  concept:p.concept||'Movimiento externo',
+  metadata:p.metadata||{},
+  created:Date.now()
+ };
+ db.integrationEvents=db.integrationEvents||[];
+ db.integrationEvents.push(event);
+ return event.id;
+}
+function applyExternalFinancialEvent(payload){
+ const p=payload||{},source=p.source||'external',acc=getAccount(p.accountId);
+ if(!acc)throw new Error('Cuenta no encontrada');
+ const amount=Number(p.amount||0);
+ if(amount<=0)throw new Error('Importe inválido');
+ const direction=p.direction||'out';
+ if(direction==='out'){
+  if(acc.balance<amount)throw new Error('Saldo insuficiente');
+  acc.balance-=amount;
+ }else{
+  acc.balance+=amount;
+ }
+ const id=registerIntegrationEvent(p);
+ db.moves.push({
+  id:uid(),created:Date.now(),origin:source,externalId:p.externalId||id,
+  type:direction==='out'?'salida':'entrada',date:p.date||today(),
+  amount,concept:p.concept||'Movimiento externo',category:p.category||source,
+  from:direction==='out'?acc.id:null,to:direction==='out'?null:acc.id,
+  account:acc.id,note:p.note||'',integrationEventId:id
+ });
+ save();
+ return id;
+}
+function openAccount(editId){
+ const existing=editId?getAccount(editId):null;
+ openModal('<h2>'+ (existing?'Editar cuenta':'Nueva cuenta') +'</h2>'+
+ '<form id="accountForm"><div class="formGrid">'+
+ '<div class="field"><label>Nombre de la cuenta</label><input class="input" name="name" value="'+esc(existing?.name||'')+'" required></div>'+
+ '<div class="field"><label>Tipo de dinero</label><select class="select" name="kind">'+
+ '<option value="cash" '+(existing&&accountKind(existing)==='Efectivo'?'selected':'')+'>Efectivo</option>'+
+ '<option value="digital" '+(existing&&accountKind(existing)==='Digital'?'selected':'')+'>Digital</option>'+
+ '</select></div>'+
+ '<div class="field"><label>Saldo actual</label><input class="input" name="balance" type="number" min="0" step="0.01" value="'+Number(existing?.balance||0).toFixed(2)+'" required></div>'+
+ '<div class="field"><label>Estado</label><select class="select" name="active"><option value="true" '+(existing?.active!==false?'selected':'')+'>Activa</option><option value="false" '+(existing?.active===false?'selected':'')+'>Inactiva</option></select></div>'+
+ '</div>'+
+ (existing?'<div class="notice">Cambiar el saldo aquí modifica el saldo de la cuenta. Para una corrección auditada del saldo usa <b>Ajustar saldo</b>.</div>':'')+
+ '<div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Guardar</button></div></form>');
+ const form=document.getElementById('accountForm');
+ document.getElementById('cancelModal').addEventListener('click',closeModal);
+ form.addEventListener('submit',function(e){
+   e.preventDefault();
+   const f=new FormData(form),name=f.get('name').trim(),balance=Number(f.get('balance'));
+   if(!name||!Number.isFinite(balance)||balance<0){alert('Revisa nombre y saldo.');return}
+   if(existing){
+     existing.name=name;
+     existing.balance=balance;
+     existing.active=f.get('active')!=='false';
+     existing.kind=f.get('kind');
+     existing.type=f.get('kind')==='cash'?'Efectivo':'Digital';
+   }else{
+     db.accounts.push({id:uid(),name,balance,active:true,kind:f.get('kind'),type:f.get('kind')==='cash'?'Efectivo':'Digital'});
+   }
+   save();closeModal();
+ });
+}
+function openAdjustmentHistory(accountId){
+ const a=getAccount(accountId);if(!a)return;
+ const rows=(db.adjustments||[]).filter(x=>x.accountId===accountId).sort((x,y)=>(y.created||0)-(x.created||0));
+ openModal('<h2>Historial de ajustes — '+esc(a.name)+'</h2>'+
+ (rows.length?rows.map(x=>'<div class="row"><div><b>'+esc(x.date)+'</b><div class="muted">'+esc(x.reason)+'</div><div class="muted">'+money(x.previousBalance)+' → '+money(x.newBalance)+'</div></div><strong class="'+(x.difference>=0?'green':'red')+'">'+(x.difference>=0?'+':'')+money(x.difference)+'</strong></div>').join(''):'<div class="empty">No hay ajustes registrados.</div>')+
+ '<div class="modalActions"><button class="btn" id="cancelModal">Cerrar</button></div>');
+ document.getElementById('cancelModal').addEventListener('click',closeModal);
+}
+
+function openAccountAdjustment(accountId){
+ const a=getAccount(accountId);if(!a)return;
+ const current=Number(a.balance||0);
+ openModal('<h2>Ajustar saldo</h2>'+
+ '<div class="notice">Este ajuste corrige el saldo registrado para que coincida con el saldo real. No se registra como una entrada o salida ficticia.</div>'+
+ '<form id="adjustBalanceForm"><div class="formGrid">'+
+ '<div class="field"><label>Cuenta</label><input class="input" value="'+esc(a.name)+'" disabled></div>'+
+ '<div class="field"><label>Saldo registrado</label><input class="input" value="'+money(current)+'" disabled></div>'+
+ '<div class="field"><label>Saldo real</label><input class="input" name="newBalance" type="number" min="0" step="0.01" value="'+current.toFixed(2)+'" required></div>'+
+ '<div class="field"><label>Fecha</label><input class="input" name="date" type="date" value="'+today()+'" required></div>'+
+ '<div class="field full"><label>Motivo</label><input class="input" name="reason" placeholder="Ej. Corrección de saldo inicial" required></div>'+
+ '</div><div id="adjustDiff" class="notice"></div>'+
+ '<div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Guardar ajuste</button></div></form>');
+ const form=document.getElementById('adjustBalanceForm'),bal=form.querySelector('[name="newBalance"]'),diff=document.getElementById('adjustDiff');
+ function updateDiff(){
+  const n=Number(bal.value||0),d=n-current;
+  diff.textContent='Diferencia: '+(d>=0?'+':'')+money(d);
+ }
+ bal.addEventListener('input',updateDiff);updateDiff();
+ document.getElementById('cancelModal').addEventListener('click',closeModal);
+ form.addEventListener('submit',function(e){
+  e.preventDefault();
+  const n=Number(bal.value),reason=form.querySelector('[name="reason"]').value.trim();
+  if(!Number.isFinite(n)||n<0||!reason){alert('Revisa el saldo y el motivo.');return}
+  const old=Number(a.balance||0),delta=n-old;
+  a.balance=n;
+  db.adjustments=db.adjustments||[];
+  db.adjustments.push({
+   id:uid(),created:Date.now(),date:form.querySelector('[name="date"]').value,
+   accountId:a.id,accountName:a.name,previousBalance:old,newBalance:n,difference:delta,reason
+  });
+  save();closeModal();
+ });
+}
+
+function openProviderDashboard(pid){
+ const p=db.providers.find(x=>x.id===pid);if(!p)return;const purchases=db.providerPurchases.filter(x=>x.providerId===pid),payments=db.providerPayments.filter(x=>x.providerId===pid);
+ const rows=purchases.map(x=>'<div class="row"><div><b>Compra '+(x.mode==='credit'?'a crédito':'de contado')+'</b><div class="muted">'+esc(x.date)+' · '+esc(x.note||'')+'</div></div><strong>'+money(x.amount)+'</strong></div>').concat(payments.map(x=>'<div class="row"><div><b>Abono</b><div class="muted">'+esc(x.date)+' · '+esc(getAccount(x.accountId)?.name||'')+'</div></div><strong class="red">−'+money(x.amount)+'</strong></div>'));
+ openModal('<h2>'+esc(p.name)+'</h2><div class="cards"><div class="card"><div class="label">Comprado</div><div class="number">'+money(providerPurchaseTotal(pid))+'</div></div><div class="card"><div class="label">Pagado</div><div class="number">'+money(providerPaidTotal(pid))+'</div></div><div class="card"><div class="label">Pendiente</div><div class="number '+(providerPending(pid)?'red':'green')+'">'+money(providerPending(pid))+'</div></div></div><div class="panel"><h2>Historial</h2>'+(rows.join('')||'<div class="empty">Sin operaciones.</div>')+'</div><div class="modalActions"><button class="btn" id="cancelModal">Cerrar</button></div>');document.getElementById('cancelModal').addEventListener('click',closeModal);
+}
+
+function openProvider(editId){
+ const p=editId?db.providers.find(x=>x.id===editId):{name:'',paymentType:'Contado',note:''};
+ openModal('<h2>'+(editId?'Editar proveedor':'Nuevo proveedor')+'</h2><form id="providerForm"><div class="formGrid">'+
+ '<div class="field full"><label>Proveedor</label><input class="input" name="name" value="'+esc(p.name)+'" required></div>'+
+ '<div class="field"><label>Forma habitual de pago</label><select class="select" name="paymentType"><option '+(p.paymentType==='Contado'?'selected':'')+'>Contado</option><option '+(p.paymentType==='Crédito'?'selected':'')+'>Crédito</option><option '+(p.paymentType==='Mixto'?'selected':'')+'>Mixto</option></select></div>'+
+ '<div class="field"><label>Nota</label><input class="input" name="note" value="'+esc(p.note||'')+'"></div></div>'+
+ '<div class="notice">No captures aquí una deuda. La deuda aparece únicamente al registrar una compra a crédito.</div>'+
+ '<div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Guardar</button></div></form>');
+ document.getElementById('cancelModal').addEventListener('click',closeModal);
+ document.getElementById('providerForm').addEventListener('submit',function(e){e.preventDefault();const f=new FormData(e.target);if(editId){p.name=f.get('name');p.paymentType=f.get('paymentType');p.note=f.get('note')}else db.providers.push({id:uid(),name:f.get('name'),paymentType:f.get('paymentType'),note:f.get('note'),creditBalance:0});save();closeModal()});
+}
+
+function openProviderPurchase(providerId){
+ const p=db.providers.find(x=>x.id===providerId);if(!p)return;
+ openModal('<h2>Registrar compra</h2><div class="notice"><b>'+esc(p.name)+'</b><br>Sólo se registra el importe financiero; los productos pertenecen al sistema de compras/inventario.</div>'+
+ '<form id="purchaseForm"><div class="formGrid">'+
+ '<div class="field"><label>Fecha</label><input class="input" name="date" type="date" value="'+today()+'" required></div>'+
+ '<div class="field"><label>Importe</label><input class="input" name="amount" type="number" min="0.01" step="0.01" required></div>'+
+ '<div class="field"><label>Forma</label><select class="select" name="paymentType"><option>Contado</option><option>Crédito</option></select></div>'+
+ '<div class="field"><label>Cuenta / caja</label><select class="select" name="account">'+accountOptions()+'</select></div>'+
+ '<div class="field full"><label>Nota</label><input class="input" name="note"></div></div>'+
+ '<div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Guardar compra</button></div></form>');
+ document.getElementById('cancelModal').addEventListener('click',closeModal);
+ document.getElementById('purchaseForm').addEventListener('submit',function(e){
+  e.preventDefault();const f=new FormData(e.target),amount=Number(f.get('amount')),type=f.get('paymentType'),acc=getAccount(f.get('account'));
+  if(amount<=0||!acc){alert('Revisa importe y cuenta.');return}
+  if(type==='Contado'&&acc.balance<amount){alert('La cuenta no tiene saldo suficiente.');return}
+  if(type==='Contado'){acc.balance-=amount;db.moves.push({id:uid(),created:Date.now(),type:'salida',date:f.get('date'),amount,concept:'Compra — '+p.name,category:'proveedores',from:acc.id,to:null,account:acc.id,note:f.get('note'),linkedType:'providerPurchase',linkedId:p.id})}
+  else {p.creditBalance=Number(p.creditBalance||0)+amount;db.moves.push({id:uid(),created:Date.now(),type:'compra_credito',date:f.get('date'),amount,concept:'Compra a crédito — '+p.name,category:'proveedores',from:null,to:null,account:null,note:f.get('note'),linkedType:'providerPurchase',linkedId:p.id,credit:true})}
+  save();closeModal();
+ });
+}
+
+function openCommitment(){
+ openModal('<h2>Nuevo compromiso</h2><form id="commitmentForm"><div class="formGrid">'+
+  '<div class="field"><label>Concepto</label><input class="input" name="name" placeholder="Ej. Tanda" required></div>'+
+  '<div class="field"><label>Categoría</label><select class="select" name="category">'+categoryOptions('compromiso')+'</select></div>'+
+  '<div class="field"><label>Total</label><input class="input" name="total" type="number" min="0" step="0.01" required></div>'+
+  '<div class="field"><label>Pagado acumulado (informativo)</label><input class="input" name="paid" type="number" min="0" step="0.01" value="0"></div>'+
+  '<div class="field"><label>Fecha límite (opcional)</label><input class="input" name="dueDate" type="date"></div>'+
+  '<div class="field"><label>Nota</label><input class="input" name="note"></div>'+
+  '</div><div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Guardar</button></div></form>');
+ document.getElementById('cancelModal').addEventListener('click',closeModal);
+ document.getElementById('commitmentForm').addEventListener('submit',function(e){
+  e.preventDefault();const f=new FormData(e.target),total=Number(f.get('total')),paid=Number(f.get('paid'));
+  if(paid>total){alert('El pagado no puede superar el total.');return}
+  db.commitments.push({id:uid(),name:f.get('name'),category:f.get('category'),total:total,paid:paid,dueDate:f.get('dueDate'),note:f.get('note')});save();closeModal();
+ });
+}
+
+function recordPayment(kind,entityId){
+ const list=kind==='provider'?db.providers:db.commitments;
+ const entity=list.find(x=>x.id===entityId);if(!entity)return;
+ const due=Math.max(0,Number(entity.total)-Number(entity.paid));
+ if(due<=0){alert('No hay saldo pendiente.');return}
+ const label=kind==='provider'?'proveedor':'compromiso';
+ openModal('<h2>Registrar pago</h2><div class="notice"><b>'+esc(entity.name)+'</b><br>Pagado: '+money(entity.paid)+' · Pendiente: '+money(due)+'</div>'+
+  '<form id="paymentForm"><div class="formGrid"><div class="field"><label>Fecha</label><input class="input" name="date" type="date" value="'+today()+'" required></div>'+
+  '<div class="field"><label>Importe</label><input class="input" name="amount" type="number" min="0.01" max="'+due+'" step="0.01" value="'+due+'" required></div>'+
+  '<div class="field"><label>Cuenta / caja</label><select class="select" name="account">'+accountOptions()+'</select></div>'+
+  '<div class="field"><label>Nota</label><input class="input" name="note"></div></div>'+
+  '<div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Registrar pago y salida</button></div></form>');
+ document.getElementById('cancelModal').addEventListener('click',closeModal);
+ document.getElementById('paymentForm').addEventListener('submit',function(e){
+  e.preventDefault();const f=new FormData(e.target),amount=Number(f.get('amount')),acc=getAccount(f.get('account'));
+  if(amount<=0||amount>due){alert('El pago no puede superar el pendiente.');return}
+  if(!acc||acc.balance<amount){alert('La cuenta no tiene saldo suficiente.');return}
+  acc.balance-=amount;entity.paid=Number(entity.paid)+amount;
+  const payment={id:uid(),created:Date.now(),date:f.get('date'),amount:amount,accountId:acc.id,note:f.get('note')};
+  if(kind==='provider'){payment.providerId=entity.id;db.providerPayments.push(payment);entity.creditBalance=Math.max(0,Number(entity.creditBalance||0)-amount)}
+  else {payment.commitmentId=entity.id;db.commitmentPayments.push(payment)}
+  db.moves.push({id:uid(),paymentId:payment.id,created:Date.now(),type:'salida',date:f.get('date'),amount:amount,concept:'Pago — '+entity.name,category:kind==='provider'?'proveedores':(entity.category||'deudas'),from:acc.id,to:null,account:acc.id,note:f.get('note'),linkedType:kind,linkedId:entity.id});
+  save();closeModal();
+ });
+}
+function openProviderPayment(i){recordPayment('provider',i)}
+function openCommitmentPayment(i){recordPayment('commitment',i)}
+
+function periodDates(type,dateFrom,dateTo){
+ const d=new Date(dateFrom+'T12:00:00');
+ let from=dateFrom,to=dateTo||dateFrom;
+ if(type==='Diario'){from=dateFrom;to=dateFrom}
+ if(type==='Semanal'){
+  const day=d.getDay(),diff=(day+6)%7;const f=new Date(d);f.setDate(d.getDate()-diff);const t=new Date(f);t.setDate(f.getDate()+6);
+  from=f.toISOString().slice(0,10);to=t.toISOString().slice(0,10);
+ }
+ if(type==='Quincenal'){
+  const y=d.getFullYear(),m=d.getMonth(),day=d.getDate();
+  if(day<=15){from=new Date(y,m,1).toISOString().slice(0,10);to=new Date(y,m,15).toISOString().slice(0,10)}
+  else {from=new Date(y,m,16).toISOString().slice(0,10);to=new Date(y,m+1,0).toISOString().slice(0,10)}
+ }
+ if(type==='Mensual'){
+  const y=d.getFullYear(),m=d.getMonth();from=new Date(y,m,1).toISOString().slice(0,10);to=new Date(y,m+1,0).toISOString().slice(0,10)
+ }
+ return {from,to};
+}
+function calculateCut(from,to){
+ const moves=db.moves.filter(m=>m.date>=from&&m.date<=to);
+ const entradas=moves.filter(m=>m.type==='entrada').reduce((s,m)=>s+Number(m.amount),0);
+ const salidas=moves.filter(m=>m.type==='salida').reduce((s,m)=>s+Number(m.amount),0);
+ const transfersIn=moves.filter(m=>m.type==='transferencia').reduce((s,m)=>s+Number(m.amount),0);
+ return {entradas,salidas,neto:entradas-salidas,transfersIn};
+}
+function openCut(){
+ openModal('<h2>Nuevo corte</h2><form id="cutForm">'+
+ '<div class="field"><label>Tipo de corte</label><select class="select" id="cutType" name="type"><option>Diario</option><option>Semanal</option><option>Quincenal</option><option>Mensual</option><option>Personalizado</option></select></div>'+
+ '<div class="formGrid"><div class="field"><label>Desde</label><input class="input" id="cutFrom" name="from" type="date" value="'+today()+'" required></div>'+
+ '<div class="field" id="toWrap"><label>Hasta</label><input class="input" id="cutTo" name="to" type="date" value="'+today()+'" required></div></div>'+
+ '<div class="notice" id="cutPreview">Selecciona las fechas para calcular el movimiento del periodo.</div>'+
+ '<div class="field"><label>Dinero real contado al cierre</label><input class="input" name="real" type="number" step="0.01" required></div>'+
+ '<div class="field"><label>Nota</label><textarea class="textarea" name="note"></textarea></div>'+
+ '<div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Guardar corte</button></div></form>');
+ const typeEl=document.getElementById('cutType'),fromEl=document.getElementById('cutFrom'),toEl=document.getElementById('cutTo'),preview=document.getElementById('cutPreview');
+ 
+ typeEl.addEventListener('change',refresh);fromEl.addEventListener('change',refresh);toEl.addEventListener('change',refresh);
+ document.getElementById('cancelModal').addEventListener('click',closeModal);refresh();
+ document.getElementById('cutForm').addEventListener('submit',function(e){
+  e.preventDefault();const p=periodDates(typeEl.value,fromEl.value,toEl.value),x=calculateCut(p.from,p.to),f=new FormData(e.target),real=Number(f.get('real'));
+  db.cuts.push({id:uid(),period:p.from+' → '+p.to,type:typeEl.value,from:p.from,to:p.to,expected:x.neto,real:real,note:f.get('note')});
+  save();closeModal();
+ });
+}
+
+function accountMovementTotals(accountId,from,to){
+ const moves=db.moves.filter(m=>m.date>=from&&m.date<=to);
+ let entradas=0,salidas=0;
+ moves.forEach(m=>{
+  if(m.type==='entrada'&&m.account===accountId) entradas+=Number(m.amount);
+  if(m.type==='salida'&&(m.account===accountId||m.from===accountId)) salidas+=Number(m.amount);
+  if(m.type==='transferencia'){
+   if(m.to===accountId) entradas+=Number(m.amount);
+   if(m.from===accountId) salidas+=Number(m.amount);
+  }
+ });
+ return {entradas,salidas};
+}
+function openingBalance(accountId,from){
+ // The current account balance minus all movements on/after the period start
+ // yields the balance before the selected period, while preserving transfer direction.
+ const acc=getAccount(accountId); if(!acc)return 0;
+ const later=db.moves.filter(m=>m.date>=from);
+ let delta=0;
+ later.forEach(m=>{
+  if(m.type==='entrada'&&m.account===accountId) delta+=Number(m.amount);
+  if(m.type==='salida'&&m.account===accountId) delta-=Number(m.amount);
+  if(m.type==='transferencia'){
+   if(m.from===accountId) delta-=Number(m.amount);
+   if(m.to===accountId) delta+=Number(m.amount);
+  }
+ });
+ return Number(acc.balance)-delta;
+}
+function renderReconciliations(){
+ const el=document.getElementById('reconciliationsBody');if(!el)return;
+ el.innerHTML=db.reconciliations.slice().sort((a,b)=>b.created-a.created).map(r=>{
+  const diff=Number(r.real)-Number(r.theoretical);
+  return '<tr><td>'+esc(r.from)+(r.to&&r.to!==r.from?' → '+esc(r.to):'')+'</td><td>'+esc(getAccount(r.accountId)?.name||'—')+'</td><td>'+money(r.opening)+'</td><td>'+money(r.entries)+'</td><td>'+money(r.exits)+'</td><td>'+money(r.theoretical)+'</td><td>'+money(r.real)+'</td><td class="'+(Math.abs(diff)<0.005?'green':'red')+'"><b>'+money(diff)+'</b></td><td><button class="btn" data-del-reconciliation="'+r.id+'">Eliminar</button></td></tr>';
+ }).join('')||'<tr><td colspan="9"><div class="empty">Todavía no hay conciliaciones.</div></td></tr>';
+ document.querySelectorAll('[data-del-reconciliation]').forEach(b=>b.addEventListener('click',function(){
+  if(confirm('¿Eliminar esta conciliación?')){db.reconciliations=db.reconciliations.filter(x=>x.id!==b.dataset.delReconciliation);save()}
+ }));
+}
+function openReconciliation(){
+ const cashAccounts=db.accounts.filter(a=>a.active&&a.type==='Caja');
+ openModal('<h2>Nueva conciliación de caja</h2>'+
+ '<div class="notice">Selecciona una caja y el periodo que quieres revisar. El sistema calculará el saldo inicial, entradas, salidas y efectivo teórico.</div>'+
+ '<form id="reconciliationForm"><div class="formGrid">'+
+ '<div class="field"><label>Caja</label><select class="select" name="account">'+cashAccounts.map(a=>'<option value="'+a.id+'">'+esc(a.name)+'</option>').join('')+'</select></div>'+
+ '<div class="field"><label>Desde</label><input class="input" name="from" type="date" value="'+today()+'" required></div>'+
+ '<div class="field"><label>Hasta</label><input class="input" name="to" type="date" value="'+today()+'" required></div>'+
+ '<div class="field"><label>Dinero real contado</label><input class="input" name="real" type="number" step="0.01" min="0" required></div>'+
+ '<div class="field full"><label>Nota</label><textarea class="textarea" name="note" rows="3" placeholder="Ej. corte olvidado del 1 al 5 de agosto"></textarea></div>'+
+ '</div><div id="reconPreview" class="notice"></div>'+
+ '<div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Guardar conciliación</button></div></form>');
+ const form=document.getElementById('reconciliationForm'), preview=document.getElementById('reconPreview');
+ 
+ form.querySelectorAll('input,select').forEach(x=>x.addEventListener('input',refresh));
+ document.getElementById('cancelModal').addEventListener('click',closeModal);refresh();
+ form.addEventListener('submit',function(e){
+  e.preventDefault();const f=new FormData(form),from=f.get('from'),to=f.get('to'),accountId=f.get('account');
+  if(to<from){alert('La fecha final no puede ser anterior a la fecha inicial.');return}
+  const ob=openingBalance(accountId,from),mt=accountMovementTotals(accountId,from,to),theoretical=ob+mt.entradas-mt.salidas,real=Number(f.get('real'));
+  db.reconciliations.push({id:uid(),created:Date.now(),accountId,from,to,opening:ob,entries:mt.entradas,exits:mt.salidas,theoretical,real,note:f.get('note')});
+  save();closeModal();
+ });
+}
+
+function renderPOSCloses(){
+ const el=document.getElementById('posClosesBody');if(!el)return;
+ el.innerHTML=db.posCloses.slice().sort((a,b)=>b.created-a.created).map(function(c){
+  const diff=Number(c.real)-Number(c.expectedCash);
+  return '<tr><td>'+esc(c.from)+' → '+esc(c.to)+'</td><td>'+money(c.sales)+'</td><td>'+money(c.expectedCash)+'</td><td>'+money(c.posExpenses)+'</td><td>'+money(c.changeLeft)+'</td><td>'+money(c.real)+'</td><td class="'+(Math.abs(diff)<0.005?'green':'red')+'"><b>'+money(diff)+'</b></td><td>'+money(c.withdrawal)+'</td><td><button class="btn" data-del-pos="'+c.id+'">Eliminar</button></td></tr>';
+ }).join('')||'<tr><td colspan="9"><div class="empty">Todavía no hay cierres de Caja POS.</div></td></tr>';
+ document.querySelectorAll('[data-del-pos]').forEach(function(b){
+  b.addEventListener('click',function(){
+   const c=db.posCloses.find(x=>x.id===b.dataset.delPos); if(!c)return;
+   if(!confirm('¿Eliminar este cierre?'))return;
+   // If an automatic withdrawal was created, reverse it.
+   if(c.withdrawal>0 && c.withdrawalMoveId){
+    const m=db.moves.find(x=>x.id===c.withdrawalMoveId);
+    if(m){
+     const from=getAccount(m.from),to=getAccount(m.to);
+     if(from)from.balance+=Number(m.amount);
+     if(to)to.balance-=Number(m.amount);
+     db.moves=db.moves.filter(x=>x.id!==m.id);
+    }
+   }
+   db.posCloses=db.posCloses.filter(x=>x.id!==c.id);save();
+  });
+ });
+}
+
+function openPOSClose(){
+ const pos=getAccount('pos'), principal=getAccount('principal');
+ openModal('<h2>Nuevo cierre de Caja POS</h2>'+
+ '<div class="notice">Introduce los datos consolidados de Loyverse. No necesitas capturar ventas individuales.</div>'+
+ '<form id="posCloseForm"><div class="formGrid">'+
+ '<div class="field"><label>Desde</label><input class="input" name="from" type="date" value="'+today()+'" required></div>'+
+ '<div class="field"><label>Hasta</label><input class="input" name="to" type="date" value="'+today()+'" required></div>'+
+ '<div class="field"><label>Ventas brutas / ventas de Loyverse</label><input class="input" name="sales" type="number" min="0" step="0.01" value="0" required></div>'+
+ '<div class="field"><label>Efectivo teórico de Loyverse</label><input class="input" name="theoretical" type="number" min="0" step="0.01" value="0" required></div>'+
+ '<div class="field"><label>Gastos / salidas de Caja POS</label><input class="input" name="expenses" type="number" min="0" step="0.01" value="0" required></div>'+
+ '<div class="field"><label>Cambio que se deja en Caja POS</label><input class="input" name="change" type="number" min="0" step="0.01" value="0" required></div>'+
+ '<div class="field"><label>Efectivo real contado</label><input class="input" name="real" type="number" min="0" step="0.01" value="0" required></div>'+
+ '<div class="field"><label>Retiro a Caja Principal</label><input class="input" name="withdrawal" type="number" min="0" step="0.01" value="0"></div>'+
+ '<div class="field full"><label>Nota</label><textarea class="textarea" name="note" rows="3" placeholder="Ej. cierre del 1 al 5 de agosto"></textarea></div>'+
+ '</div><div id="posPreview" class="notice"></div>'+
+ '<div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Guardar cierre</button></div></form>');
+ const form=document.getElementById('posCloseForm'),preview=document.getElementById('posPreview');
+ function refresh(){
+  const f=new FormData(form);
+  const sales=Number(f.get('sales')),theoretical=Number(f.get('theoretical')),expenses=Number(f.get('expenses')),change=Number(f.get('change')),real=Number(f.get('real')),withdrawal=Number(f.get('withdrawal'));
+  const diff=real-theoretical;
+  preview.innerHTML='<b>Resultado:</b> Efectivo teórico '+money(theoretical)+' · Real '+money(real)+' · Diferencia <span class="'+(Math.abs(diff)<0.005?'green':'red')+'"><b>'+money(diff)+'</b></span><br>'+
+   '<b>Retiro sugerido según el efectivo contado:</b> '+money(Math.max(0,real-change))+' · <b>Retiro capturado:</b> '+money(withdrawal);
+ }
+ form.querySelectorAll('input').forEach(function(x){x.addEventListener('input',refresh)});
+ document.getElementById('cancelModal').addEventListener('click',closeModal);refresh();
+ form.addEventListener('submit',function(e){
+  e.preventDefault();const f=new FormData(form),from=f.get('from'),to=f.get('to');
+  if(to<from){alert('La fecha final no puede ser anterior a la inicial.');return}
+  const sales=Number(f.get('sales')),theoretical=Number(f.get('theoretical')),expenses=Number(f.get('expenses')),change=Number(f.get('change')),real=Number(f.get('real')),withdrawal=Number(f.get('withdrawal'));
+  if(real<withdrawal){alert('El retiro no puede ser mayor que el efectivo real contado.');return}
+  if(change>real){alert('El cambio dejado no puede ser mayor que el efectivo real contado.');return}
+  if(withdrawal>0){
+   if(!pos||!principal){alert('No existen Caja POS y Caja Principal.');return}
+   if(pos.balance<withdrawal){alert('Caja POS no tiene saldo suficiente para registrar ese retiro.');return}
+   pos.balance-=withdrawal;principal.balance+=withdrawal;
+  }
+  const close={id:uid(),created:Date.now(),from,to,sales,theoreticalCash:theoretical,expectedCash:theoretical,posExpenses:expenses,changeLeft:change,real,withdrawal,note:f.get('note'),withdrawalMoveId:null};
+  if(withdrawal>0){
+   const move={id:uid(),created:Date.now(),type:'transferencia',date:to,amount:withdrawal,concept:'Retiro Caja POS → Caja Principal',category:'',from:pos.id,to:principal.id,account:pos.id,note:'Cierre POS '+from+' → '+to,linkedType:'posClose',linkedId:close.id};
+   close.withdrawalMoveId=move.id;db.moves.push(move);
+  }
+  db.posCloses.push(close);save();closeModal();
+ });
+}
+
+function openCategory(type,editId){
+ const existing=editId?getCategory(type,editId):{name:'',active:true};
+ openModal('<h2>'+(editId?'Editar categoría':'Nueva categoría')+'</h2><form id="categoryForm">'+
+ '<div class="field"><label>Tipo</label><select class="select" name="type" '+(editId?'disabled':'')+'><option value="entrada" '+(type==='entrada'?'selected':'')+'>Entrada</option><option value="salida" '+(type==='salida'?'selected':'')+'>Salida</option><option value="compromiso" '+(type==='compromiso'?'selected':'')+'>Compromiso</option></select></div>'+
+ '<div class="field"><label>Nombre</label><input class="input" name="name" value="'+esc(existing.name)+'" required></div>'+
+ '<div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Guardar</button></div></form>');
+ document.getElementById('cancelModal').addEventListener('click',closeModal);
+ document.getElementById('categoryForm').addEventListener('submit',function(e){e.preventDefault();const f=new FormData(e.target),name=f.get('name').trim(),t=editId?type:f.get('type');if(!name)return;if(editId)existing.name=name;else db.categories[t].push({id:uid(),name:name,active:true});save();closeModal()});
+}
+function toggleCategory(type,i){const c=getCategory(type,i);if(c){c.active=!c.active;save()}}
+function deleteProvider(i){if(confirm('¿Eliminar proveedor?')){db.providers=db.providers.filter(x=>x.id!==i);save()}}
+function deleteCommitment(i){if(confirm('¿Eliminar compromiso?')){db.commitments=db.commitments.filter(x=>x.id!==i);save()}}
+function deleteMove(i){
+ const m=db.moves.find(x=>x.id===i);if(!m)return;
+ if(!confirm('¿Eliminar este movimiento? El saldo será revertido.'))return;
+ const from=getAccount(m.from||m.account);
+ if(m.type==='entrada'&&from)from.balance-=Number(m.amount);
+ if(m.type==='salida'&&from)from.balance+=Number(m.amount);
+ if(m.type==='transferencia'){if(from)from.balance+=Number(m.amount);const to=getAccount(m.to);if(to)to.balance-=Number(m.amount)}
+ db.moves=db.moves.filter(x=>x.id!==i);save();
+}
+
+function resultRange(){
+ const t=document.getElementById('resultPeriod')?.value||'month',d=new Date(today()+'T12:00:00');
+ let from=document.getElementById('resultFrom')?.value||today(),to=document.getElementById('resultTo')?.value||today();
+ if(t==='month'){from=new Date(d.getFullYear(),d.getMonth(),1).toISOString().slice(0,10);to=new Date(d.getFullYear(),d.getMonth()+1,0).toISOString().slice(0,10)}
+ if(t==='week'){const n=d.getDay(),diff=(n+6)%7,f=new Date(d);f.setDate(d.getDate()-diff);const z=new Date(f);z.setDate(f.getDate()+6);from=f.toISOString().slice(0,10);to=z.toISOString().slice(0,10)}
+ return {from,to};
+}
+function renderResult(){
+ const r=resultRange(),from=r.from,to=r.to;
+ const loy=db.loyverseSummaries.filter(x=>x.from>=from&&x.to<=to);
+ const sales=loy.reduce((s,x)=>s+Number(x.sales||0),0),gross=loy.reduce((s,x)=>s+Number(x.gross||0),0);
+ const outs=db.moves.filter(m=>m.type==='salida'&&m.date>=from&&m.date<=to&&m.linkedType!=='posClose').reduce((s,m)=>s+Number(m.amount),0);
+ document.getElementById('resSales').textContent=money(sales);document.getElementById('resGross').textContent=money(gross);document.getElementById('resOut').textContent=money(outs);document.getElementById('resNet').textContent=money(gross-outs);
+ document.getElementById('loyverseSummary').innerHTML=loy.map(x=>'<div class="row"><div><b>'+esc(x.from)+' → '+esc(x.to)+'</b><div class="muted">Ventas '+money(x.sales)+' · Beneficio bruto '+money(x.gross)+'</div></div><button class="btn" data-del-loy="'+x.id+'">Eliminar</button></div>').join('')||'<div class="empty">Sin resumen de Loyverse.</div>';
+ document.querySelectorAll('[data-del-loy]').forEach(b=>b.addEventListener('click',function(){if(confirm('¿Eliminar este resumen?')){db.loyverseSummaries=db.loyverseSummaries.filter(x=>x.id!==b.dataset.delLoy);save()}}));
+ const cats={};db.moves.filter(m=>m.type==='salida'&&m.date>=from&&m.date<=to).forEach(m=>{const n=categoryName('salida',m.category)||'Sin categoría';cats[n]=(cats[n]||0)+Number(m.amount)});
+ document.getElementById('resultCategories').innerHTML=Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(x=>'<div class="row"><span>'+esc(x[0])+'</span><strong>'+money(x[1])+'</strong></div>').join('')||'<div class="empty">Sin salidas.</div>';
+ document.getElementById('resultNarrative').innerHTML='<div class="row"><div><b>Periodo</b><div class="muted">'+from+' → '+to+'</div></div><strong>'+money(sales)+'</strong></div><div class="row"><div><b>Beneficio bruto de Loyverse</b></div><strong>'+money(gross)+'</strong></div><div class="row"><div><b>Salidas financieras</b></div><strong class="red">−'+money(outs)+'</strong></div><div class="row"><div><b>Resultado de referencia</b><div class="muted">Beneficio bruto informado por Loyverse menos salidas financieras.</div></div><strong>'+money(gross-outs)+'</strong></div>';
+}
+function openLoyverseSummary(){
+ openModal('<h2>Registrar resumen de Loyverse</h2><div class="notice">No se importan ventas individuales. Sólo el resumen consolidado.</div><form id="loyForm"><div class="formGrid"><div class="field"><label>Desde</label><input class="input" name="from" type="date" value="'+today()+'" required></div><div class="field"><label>Hasta</label><input class="input" name="to" type="date" value="'+today()+'" required></div><div class="field"><label>Ventas netas</label><input class="input" name="sales" type="number" min="0" step="0.01" required></div><div class="field"><label>Beneficio bruto</label><input class="input" name="gross" type="number" min="0" step="0.01" required></div><div class="field full"><label>Nota</label><textarea class="textarea" name="note"></textarea></div></div><div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Guardar</button></div></form>');
+ document.getElementById('cancelModal').addEventListener('click',closeModal);
+ document.getElementById('loyForm').addEventListener('submit',function(e){e.preventDefault();const f=new FormData(e.target);if(f.get('to')<f.get('from')){alert('La fecha final no puede ser anterior.');return}db.loyverseSummaries.push({id:uid(),created:Date.now(),from:f.get('from'),to:f.get('to'),sales:Number(f.get('sales')),gross:Number(f.get('gross')),note:f.get('note')});save();closeModal()});
+}
+
+function renderDataStatus(){
+ const el=document.getElementById('dataStatus');if(!el)return;
+ el.innerHTML='<div class="row"><div><b>Último guardado</b><div class="muted">Los datos están en este navegador.</div></div><strong>'+new Date().toLocaleString('es-MX')+'</strong></div>'+
+ '<div class="row"><div><b>Movimientos</b></div><strong>'+db.moves.length+'</strong></div>'+
+ '<div class="row"><div><b>Proveedores</b></div><strong>'+db.providers.length+'</strong></div>'+
+ '<div class="row"><div><b>Compromisos</b></div><strong>'+db.commitments.length+'</strong></div>'+
+ '<div class="row"><div><b>Cierres POS</b></div><strong>'+db.posCloses.length+'</strong></div>';
+}
+function exportData(){
+ const payload={app:'Panorama Finanzas',version:'PF-V1-017',exportedAt:new Date().toISOString(),data:db};
+ const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+ const url=URL.createObjectURL(blob),a=document.createElement('a');
+ a.href=url;a.download='Panorama_Finanzas_Backup_'+today()+'.json';a.click();URL.revokeObjectURL(url);
+}
+function importData(file){
+ const reader=new FileReader();
+ reader.onload=function(){
+  try{
+   const payload=JSON.parse(reader.result),d=payload.data||payload;
+   if(!d.accounts||!d.moves||!d.categories){throw new Error('El archivo no parece un respaldo válido de Panorama Finanzas.')}
+   if(!confirm('Esto reemplazará los datos actuales por el respaldo. ¿Continuar?'))return;
+   db=d;
+   db.providers=db.providers||[];db.commitments=db.commitments||[];db.cuts=db.cuts||[];db.providerPayments=db.providerPayments||[];db.commitmentPayments=db.commitmentPayments||[];db.reconciliations=db.reconciliations||[];db.posCloses=db.posCloses||[];db.adjustments=db.adjustments||[];db.loyverseSummaries=db.loyverseSummaries||[];
+   save();alert('Respaldo importado correctamente.');
+  }catch(err){alert('No se pudo importar el respaldo: '+err.message)}
+ };
+ reader.readAsText(file);
+}
+function resetTestData(){
+ if(!confirm('Esto eliminará los datos actuales de este navegador y restaurará los datos de prueba. Descarga un respaldo antes si quieres conservarlos.'))return;
+ localStorage.removeItem(STORAGE);db=load();renderAll();alert('Datos de prueba restaurados.');
+}
+
+// Button wiring — explicit listeners, no inline event handlers.
+document.getElementById('btnEntrada').addEventListener('click',function(){openMovement('entrada')});
+document.getElementById('btnSalida').addEventListener('click',function(){openMovement('salida')});
+document.getElementById('btnTransfer').addEventListener('click',function(){openMovement('transferencia')});
+document.getElementById('btnNewAccount').addEventListener('click',function(){openAccount()});
+document.getElementById('btnNewProvider').addEventListener('click',function(){openProvider()});
+document.getElementById('btnNewCommitment').addEventListener('click',function(){openCommitment()});
+document.getElementById('btnNewCut').addEventListener('click',function(){openCut()});
+document.getElementById('btnNewCategory').addEventListener('click',function(){openCategory('salida')});
+document.getElementById('btnNewReconciliation').addEventListener('click',function(){openReconciliation()});
+document.getElementById('btnNewPOSClose').addEventListener('click',function(){openPOSClose()});
+document.getElementById('btnExportData').addEventListener('click',exportData);
+document.getElementById('btnImportData').addEventListener('click',function(){document.getElementById('importFile').click()});
+document.getElementById('importFile').addEventListener('change',function(e){if(e.target.files[0])importData(e.target.files[0]);e.target.value=''});
+document.getElementById('btnResetData').addEventListener('click',resetTestData);
+document.getElementById('btnRefreshResult').addEventListener('click',renderResult);
+document.getElementById('btnAddLoyverse').addEventListener('click',openLoyverseSummary);
+document.getElementById('resultPeriod').addEventListener('change',function(){const c=this.value==='custom';document.getElementById('resultFrom').style.display=c?'block':'none';document.getElementById('resultTo').style.display=c?'block':'none';renderResult()});
+document.getElementById('resultFrom').addEventListener('change',renderResult);document.getElementById('resultTo').addEventListener('change',renderResult);
+document.getElementById('searchMoves').addEventListener('input',renderMoves);
+document.getElementById('filterMoves').addEventListener('change',renderMoves);
+
+document.getElementById('resultFrom').style.display='none';document.getElementById('resultTo').style.display='none';renderAll();
+})();
+</script>
+<script>if("serviceWorker" in navigator && location.protocol!=="file:"){addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js"))}</script></body>
+</html>
