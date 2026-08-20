@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Panorama Café — Finanzas PF-V1-035</title>
+<title>Panorama Café — Finanzas PF-V1-036</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f1ec;color:#272421}
 button,input,select,textarea{font:inherit}button{cursor:pointer}.app{display:flex;min-height:100vh}
@@ -41,7 +41,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.app{display:fle
  .panelHeader{align-items:flex-start;flex-direction:column}
 }
 
-/* PF-V1-017 — corrección de ancho, desbordamiento y navegación */
+/* PF-V1-036 — corrección de ancho, desbordamiento y navegación */
 html,body{max-width:100%;overflow-x:hidden}
 .content{min-width:0}
 .view{min-width:0}
@@ -56,7 +56,7 @@ html,body{max-width:100%;overflow-x:hidden}
  .moduleHeader .btn{align-self:flex-start}
 }
 
-/* PF-V1-018 — vistas administrativas dentro del contenedor principal */
+/* PF-V1-036 — vistas administrativas dentro del contenedor principal */
 .content{box-sizing:border-box;overflow-x:hidden}
 .view{width:100%;max-width:100%;box-sizing:border-box}
 .moduleHeader,.moduleStats,.modulePanel{box-sizing:border-box;max-width:100%}
@@ -69,7 +69,7 @@ html,body{max-width:100%;overflow-x:hidden}
 .fieldHelp{font-size:12px;color:#77716a;margin-top:6px;line-height:1.4}.field.full{grid-column:1/-1}
 .filterDate{display:flex;align-items:center;gap:6px;font-size:12px;color:#6f6a64}.filterDate .input{width:145px}
 
-/* PF-V1-030 — barra lateral desplazable */
+/* PF-V1-036 — barra lateral desplazable */
 .sidebar{
   overflow-y:auto;
   overflow-x:hidden;
@@ -87,7 +87,7 @@ html,body{max-width:100%;overflow-x:hidden}
   }
 }
 
-/* PF-V1-032 — sidebar compacta y contraíble */
+/* PF-V1-036 — sidebar compacta y contraíble */
 .sidebar{
   width:238px;
   min-width:238px;
@@ -216,7 +216,7 @@ html,body{max-width:100%;overflow-x:hidden}
 <div id="sidebarOverlay" class="sidebarOverlay"></div>
 <aside class="sidebar" id="appSidebar">
   <div class="brand">
-    <div class="brandMain"><strong>Panorama Café</strong><small>FINANZAS · PF-V1-032</small></div>
+    <div class="brandMain"><strong>Panorama Café</strong><small>FINANZAS · PF-V1-036</small></div>
     <button type="button" class="sidebarToggle" id="sidebarToggle" aria-label="Cerrar barra lateral" title="Cerrar barra lateral"><span class="hamburger">☰</span></button>
   </div>
   <nav class="nav" aria-label="Navegación principal">
@@ -237,7 +237,7 @@ html,body{max-width:100%;overflow-x:hidden}
 </aside>
 
 <main class="content">
-<header class="header"><div><h1 id="title">Posición financiera</h1><div class="muted">Control del dinero real de Panorama Café</div></div><div class="version">PF-V1-017</div></header>
+<header class="header"><div><h1 id="title">Posición financiera</h1><div class="muted">Control del dinero real de Panorama Café</div></div><div class="version">PF-V1-036</div></header>
 
 <section id="dashboard" class="view active">
   <div class="notice">Loyverse sigue siendo el punto de venta. Esta app controla el dinero real, compromisos y movimientos.</div>
@@ -1492,7 +1492,7 @@ function renderDataStatus(){
  '<div class="row"><div><b>Cierres POS</b></div><strong>'+db.posCloses.length+'</strong></div>';
 }
 function exportData(){
- const payload={app:'Panorama Finanzas',version:'PF-V1-017',exportedAt:new Date().toISOString(),data:db};
+ const payload={app:'Panorama Finanzas',version:'PF-V1-036',exportedAt:new Date().toISOString(),data:db};
  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
  const url=URL.createObjectURL(blob),a=document.createElement('a');
  a.href=url;a.download='Panorama_Finanzas_Backup_'+today()+'.json';a.click();URL.revokeObjectURL(url);
@@ -1541,7 +1541,7 @@ document.getElementById('filterMoves').addEventListener('change',renderMoves);
 document.getElementById('resultFrom').style.display='none';document.getElementById('resultTo').style.display='none';renderAll();
 
 
-// PF-V1-022 — handlers de Nómina y Pagos fijos dentro del mismo scope
+// PF-V1-036 — handlers de Nómina y Pagos fijos dentro del mismo scope
 document.addEventListener('click',function(ev){
  const t=ev.target.closest?.('#newPayrollEmployee,#newPayrollEmployee2,#newPayrollPayment,#newFixedPayment');
  if(!t)return;
@@ -1623,5 +1623,46 @@ if(sidebar){
 </script>
 
 
-<script>if("serviceWorker" in navigator && location.protocol!=="file:"){navigator.serviceWorker.register("./service-worker.js")}</script></body>
+
+<script>
+(function(){
+  if(!("serviceWorker" in navigator) || location.protocol==="file:") return;
+  let reloadedForController = false;
+
+  window.addEventListener("load", async function(){
+    try{
+      const registration = await navigator.serviceWorker.register("./service-worker.js", { updateViaCache: "none" });
+      registration.update().catch(function(){});
+
+      function activateWaiting(){
+        if(registration.waiting){
+          registration.waiting.postMessage({type:"SKIP_WAITING"});
+        }
+      }
+      activateWaiting();
+
+      registration.addEventListener("updatefound", function(){
+        const worker = registration.installing;
+        if(!worker) return;
+        worker.addEventListener("statechange", function(){
+          if(worker.state === "installed" && navigator.serviceWorker.controller){
+            worker.postMessage({type:"SKIP_WAITING"});
+          }
+        });
+      });
+    }catch(e){
+      console.warn("No se pudo actualizar Panorama Finanzas.", e);
+    }
+  });
+
+  navigator.serviceWorker.addEventListener("controllerchange", function(){
+    if(!reloadedForController){
+      reloadedForController = true;
+      location.reload();
+    }
+  });
+})();
+</script>
+
+</body>
 </html>

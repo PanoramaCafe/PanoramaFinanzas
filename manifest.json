@@ -1,7 +1,8 @@
 {
   "name": "Panorama Café — Finanzas",
   "short_name": "Panorama Finanzas",
-  "start_url": "./",
+  "description": "Control financiero de Panorama Café",
+  "start_url": "./?v=PF-V1-036",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f4f1ec",
