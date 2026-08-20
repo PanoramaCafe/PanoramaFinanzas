@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Panorama Café — Finanzas PF-V1-038</title>
+<title>Panorama Café — Finanzas PF-V1-040</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f1ec;color:#272421}
 button,input,select,textarea{font:inherit}button{cursor:pointer}.app{display:flex;min-height:100vh}
@@ -41,7 +41,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.app{display:fle
  .panelHeader{align-items:flex-start;flex-direction:column}
 }
 
-/* PF-V1-038 — corrección de ancho, desbordamiento y navegación */
+/* PF-V1-040 — corrección de ancho, desbordamiento y navegación */
 html,body{max-width:100%;overflow-x:hidden}
 .content{min-width:0}
 .view{min-width:0}
@@ -56,7 +56,7 @@ html,body{max-width:100%;overflow-x:hidden}
  .moduleHeader .btn{align-self:flex-start}
 }
 
-/* PF-V1-038 — vistas administrativas dentro del contenedor principal */
+/* PF-V1-040 — vistas administrativas dentro del contenedor principal */
 .content{box-sizing:border-box;overflow-x:hidden}
 .view{width:100%;max-width:100%;box-sizing:border-box}
 .moduleHeader,.moduleStats,.modulePanel{box-sizing:border-box;max-width:100%}
@@ -69,7 +69,7 @@ html,body{max-width:100%;overflow-x:hidden}
 .fieldHelp{font-size:12px;color:#77716a;margin-top:6px;line-height:1.4}.field.full{grid-column:1/-1}
 .filterDate{display:flex;align-items:center;gap:6px;font-size:12px;color:#6f6a64}.filterDate .input{width:145px}
 
-/* PF-V1-038 — barra lateral desplazable */
+/* PF-V1-040 — barra lateral desplazable */
 .sidebar{
   overflow-y:auto;
   overflow-x:hidden;
@@ -87,7 +87,7 @@ html,body{max-width:100%;overflow-x:hidden}
   }
 }
 
-/* PF-V1-038 — sidebar compacta y contraíble */
+/* PF-V1-040 — sidebar compacta y contraíble */
 .sidebar{
   width:238px;
   min-width:238px;
@@ -207,7 +207,7 @@ html,body{max-width:100%;overflow-x:hidden}
   .sidebar.is-collapsed ~ .mobileSidebarToggle{display:flex !important;}
 }
 
-/* PF-V1-038 — corrección definitiva de navegación móvil */
+/* PF-V1-040 — corrección definitiva de navegación móvil */
 @media(max-width:900px){
   .sidebar{
     width:280px !important;
@@ -249,13 +249,294 @@ html,body{max-width:100%;overflow-x:hidden}
   }
 }
 
-/* PF-V1-038 — botón móvil siempre accesible cuando la barra está cerrada */
+/* PF-V1-040 — botón móvil siempre accesible cuando la barra está cerrada */
 @media(max-width:900px){
   body.sidebar-closed .mobileSidebarToggle{
     display:flex !important;
   }
   body.sidebar-open .mobileSidebarToggle{
     display:none !important;
+  }
+}
+
+/* PF-V1-040 — Cuentas y dinero responsive en iPhone */
+.accountsTableWrap{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+@media(max-width:900px){
+  .accountsTableWrap{overflow-x:visible;}
+  .accountsTable{
+    width:100% !important;
+    min-width:0 !important;
+    table-layout:fixed;
+  }
+  .accountsTable thead{display:none;}
+  .accountsTable tbody,
+  .accountsTable tbody tr,
+  .accountsTable tbody td{
+    display:block;
+    width:100%;
+    box-sizing:border-box;
+  }
+  .accountsTable tbody tr{
+    margin:0 0 18px;
+    padding:16px 0;
+    border-bottom:1px solid var(--border,#e5e0d9);
+  }
+  .accountsTable tbody td{
+    border:0 !important;
+    padding:7px 0 !important;
+    white-space:normal !important;
+    overflow:visible !important;
+  }
+  .accountsTable tbody td[data-label="Saldo actual"],
+  .accountsTable tbody td[data-label="Tipo"]{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+  }
+  .accountsTable tbody td[data-label="Saldo actual"]::before,
+  .accountsTable tbody td[data-label="Tipo"]::before{
+    content:attr(data-label);
+    font-size:.82rem;
+    color:#777;
+    font-weight:600;
+  }
+  .accountsTable tbody td[data-label="Acciones"]{
+    padding-top:12px !important;
+  }
+  .accountsTable .actions{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    width:100%;
+  }
+  .accountsTable .actions .btn{
+    flex:1 1 calc(50% - 8px);
+    min-width:0;
+    white-space:normal;
+    min-height:42px;
+  }
+  .accountsTable tbody td[data-label="Cuenta"] b{
+    font-size:1.05rem;
+  }
+}
+
+/* =========================================================
+   PF-V1-040 — CROSS-DEVICE RESPONSIVE CONSOLIDATION
+   Desktop • Laptop • iPad • Android tablets • Phones
+   ========================================================= */
+
+/* Global safeguards */
+html, body { max-width:100%; overflow-x:hidden; }
+*, *::before, *::after { box-sizing:border-box; }
+img, svg, canvas { max-width:100%; height:auto; }
+button, input, select, textarea { max-width:100%; }
+.app, .main, main, .content, .page, .pageContent { min-width:0; }
+
+/* Flexible layout primitives */
+.cards, .statsGrid, .dashboardGrid, .summaryGrid, .grid,
+.twoCol, .twoColumn, .formGrid {
+  min-width:0;
+}
+.tableWrap, .tableContainer, .responsiveTable { width:100%; max-width:100%; }
+
+/* Touch targets */
+@media (pointer:coarse) {
+  button, .btn, .navBtn, .actionBtn, .iconBtn, select {
+    min-height:44px;
+  }
+}
+
+/* LARGE DESKTOP */
+@media (min-width:1200px) {
+  .content, main, .pageContent { padding-left:30px; padding-right:30px; }
+}
+
+/* LAPTOP / COMPACT DESKTOP */
+@media (min-width:1024px) and (max-width:1199px) {
+  .content, main, .pageContent { padding-left:24px; padding-right:24px; }
+  .cards, .statsGrid, .dashboardGrid, .summaryGrid { gap:16px; }
+}
+
+/* TABLETS: preserve information but prevent cramped overflow */
+@media (min-width:768px) and (max-width:1023px) {
+  .content, main, .pageContent { min-width:0; padding:22px 20px; }
+  .cards, .statsGrid, .dashboardGrid, .summaryGrid {
+    grid-template-columns:repeat(2, minmax(0,1fr)) !important;
+    gap:16px;
+  }
+  .formGrid, .modalGrid, .form-row {
+    grid-template-columns:repeat(2, minmax(0,1fr)) !important;
+  }
+  .modal, .modalCard, .dialog {
+    width:min(92vw,760px) !important;
+    max-width:92vw !important;
+    max-height:90vh;
+    overflow:auto;
+  }
+}
+
+/* SMALL TABLETS / LARGE PHONES */
+@media (min-width:600px) and (max-width:767px) {
+  .content, main, .pageContent { min-width:0; padding:18px 16px; }
+  .cards, .statsGrid, .dashboardGrid, .summaryGrid {
+    grid-template-columns:repeat(2, minmax(0,1fr)) !important;
+    gap:14px;
+  }
+  .formGrid, .modalGrid, .form-row { grid-template-columns:1fr !important; }
+  .modal, .modalCard, .dialog {
+    width:min(94vw,620px) !important;
+    max-width:94vw !important;
+    max-height:88vh;
+    overflow:auto;
+  }
+  .actionRow, .actions, .buttonRow, .modalActions {
+    flex-wrap:wrap !important;
+    gap:10px;
+  }
+}
+
+/* PHONES */
+@media (max-width:599px) {
+  body { min-width:0; }
+  .content, main, .pageContent {
+    width:100% !important;
+    min-width:0 !important;
+    margin-left:0 !important;
+    padding:84px 16px 24px !important;
+  }
+
+  h1 { font-size:clamp(28px,8vw,42px) !important; line-height:1.08; }
+  h2 { font-size:clamp(22px,6vw,30px) !important; }
+  h3 { font-size:20px !important; }
+  .subtitle, .pageSubtitle { font-size:16px !important; }
+
+  .cards, .statsGrid, .dashboardGrid, .summaryGrid,
+  .twoCol, .twoColumn, .grid {
+    grid-template-columns:1fr !important;
+    gap:14px !important;
+  }
+
+  .card, .panel, .sectionCard { min-width:0 !important; }
+  .formGrid, .modalGrid, .form-row, .fieldRow {
+    grid-template-columns:1fr !important;
+    gap:12px !important;
+  }
+
+  .modal, .modalCard, .dialog, [role="dialog"] {
+    width:calc(100vw - 24px) !important;
+    max-width:calc(100vw - 24px) !important;
+    max-height:calc(100dvh - 24px) !important;
+    margin:12px auto !important;
+    overflow:auto !important;
+  }
+
+  .actionRow, .actions, .buttonRow, .modalActions,
+  .headerActions, .toolbar {
+    display:flex !important;
+    flex-wrap:wrap !important;
+    width:100%;
+    gap:8px !important;
+  }
+  .actionRow > *, .actions > *, .buttonRow > *,
+  .modalActions > *, .headerActions > *, .toolbar > * {
+    min-width:0;
+  }
+
+  input, select, textarea {
+    width:100% !important;
+    font-size:16px !important; /* avoids iOS zoom */
+  }
+
+  /* Tables: compact cards when rows are structured as data rows */
+  .accountsTable, .accounts-table, .dataTable, .data-table {
+    display:block !important;
+    width:100% !important;
+    min-width:0 !important;
+  }
+  .accountsTable thead, .accounts-table thead {
+    display:none !important;
+  }
+  .accountsTable tbody, .accounts-table tbody,
+  .accountsTable tr, .accounts-table tr {
+    display:block !important;
+    width:100% !important;
+  }
+  .accountsTable tr, .accounts-table tr {
+    margin:0 0 14px !important;
+    padding:16px !important;
+    border:1px solid rgba(120,110,95,.22) !important;
+    border-radius:18px !important;
+    background:rgba(255,255,255,.42);
+  }
+  .accountsTable td, .accounts-table td {
+    display:block !important;
+    width:100% !important;
+    padding:7px 0 !important;
+    border:0 !important;
+    white-space:normal !important;
+    overflow-wrap:anywhere;
+  }
+  .accountsTable td:last-child, .accounts-table td:last-child {
+    display:flex !important;
+    flex-wrap:wrap !important;
+    gap:8px !important;
+    margin-top:8px;
+  }
+  .accountsTable td:last-child button, .accounts-table td:last-child button,
+  .accountsTable td:last-child .btn, .accounts-table td:last-child .btn {
+    flex:1 1 calc(50% - 8px);
+    min-width:132px;
+  }
+
+  /* Generic tables: allow contained horizontal scroll rather than page overflow */
+  table { max-width:100%; }
+  .tableWrap:not(.accountsTable), .tableContainer:not(.accounts-table),
+  .responsiveTable:not(.accounts-table) {
+    overflow-x:auto !important;
+    overscroll-behavior-inline:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  /* Sidebar and mobile trigger */
+  .sidebar {
+    width:min(82vw,300px) !important;
+    min-width:min(82vw,300px) !important;
+    max-width:300px !important;
+  }
+  body.sidebar-closed .mobileSidebarToggle {
+    position:fixed !important;
+    top:max(16px, env(safe-area-inset-top)) !important;
+    left:16px !important;
+    z-index:9999 !important;
+    display:flex !important;
+    width:56px !important;
+    height:56px !important;
+    align-items:center;
+    justify-content:center;
+  }
+
+  /* Account/page action controls must never escape viewport */
+  .accountActions, .rowActions, .tableActions {
+    display:flex !important;
+    flex-wrap:wrap !important;
+    width:100% !important;
+    gap:8px !important;
+  }
+  .accountActions button, .rowActions button, .tableActions button {
+    flex:1 1 calc(50% - 8px) !important;
+    min-width:120px !important;
+  }
+}
+
+/* Safe-area support for iPhone */
+@supports (padding: max(0px)) {
+  @media (max-width:599px) {
+    .content, main, .pageContent {
+      padding-left:max(16px, env(safe-area-inset-left)) !important;
+      padding-right:max(16px, env(safe-area-inset-right)) !important;
+      padding-bottom:max(24px, env(safe-area-inset-bottom)) !important;
+    }
   }
 }
 </style>
@@ -266,7 +547,7 @@ html,body{max-width:100%;overflow-x:hidden}
 <div id="sidebarOverlay" class="sidebarOverlay"></div>
 <aside class="sidebar" id="appSidebar">
   <div class="brand">
-    <div class="brandMain"><strong>Panorama Café</strong><small>FINANZAS · PF-V1-038</small></div>
+    <div class="brandMain"><strong>Panorama Café</strong><small>FINANZAS · PF-V1-040</small></div>
     <button type="button" class="sidebarToggle" id="sidebarToggle" aria-label="Cerrar barra lateral" title="Cerrar barra lateral"><span class="hamburger">☰</span></button>
   </div>
   <nav class="nav" aria-label="Navegación principal">
@@ -287,7 +568,7 @@ html,body{max-width:100%;overflow-x:hidden}
 </aside>
 
 <main class="content">
-<header class="header"><div><h1 id="title">Posición financiera</h1><div class="muted">Control del dinero real de Panorama Café</div></div><div class="version">PF-V1-038</div></header>
+<header class="header"><div><h1 id="title">Posición financiera</h1><div class="muted">Control del dinero real de Panorama Café</div></div><div class="version">PF-V1-040</div></header>
 
 <section id="dashboard" class="view active">
   <div class="notice">Loyverse sigue siendo el punto de venta. Esta app controla el dinero real, compromisos y movimientos.</div>
@@ -314,7 +595,7 @@ html,body{max-width:100%;overflow-x:hidden}
 </section>
 
 <section id="cuentas" class="view">
- <div class="panel"><div class="toolbar"><div><h2>Cuentas y dinero</h2><div class="notice">💵 <b>Efectivo físico</b> = dinero que está en el café. 🏦 <b>Cuenta digital</b> = dinero que está en Mercado Pago, Revolut u otra cuenta.</div><div class="muted">Saldos reales registrados.</div></div><button class="btn primary" id="btnNewAccount">＋ Nueva cuenta</button></div><table class="table"><thead><tr><th>Cuenta</th><th>Saldo actual</th><th>Tipo</th><th>Acciones</th></tr></thead><tbody id="accountsBody"></tbody></table></div>
+ <div class="panel"><div class="toolbar"><div><h2>Cuentas y dinero</h2><div class="notice">💵 <b>Efectivo físico</b> = dinero que está en el café. 🏦 <b>Cuenta digital</b> = dinero que está en Mercado Pago, Revolut u otra cuenta.</div><div class="muted">Saldos reales registrados.</div></div><button class="btn primary" id="btnNewAccount">＋ Nueva cuenta</button></div><div class="accountsTableWrap"><table class="table accountsTable"><thead><tr><th>Cuenta</th><th>Saldo actual</th><th>Tipo</th><th>Acciones</th></tr></thead><tbody id="accountsBody"></tbody></table></div></div>
 </section>
 
 <section id="proveedores" class="view">
@@ -719,10 +1000,10 @@ function renderAccounts(){
  const accounts=(db.accounts||[]).filter(a=>a.active!==false);
  body.innerHTML=accounts.map(function(a){
    return '<tr>'+
-    '<td><b>'+accountKindIcon(a)+' '+esc(a.name)+'</b><div class="muted">'+esc(accountKind(a))+'</div></td>'+
-    '<td><strong>'+money(Number(a.balance||0))+'</strong></td>'+
-    '<td>'+esc(a.type||'')+'</td>'+
-    '<td><div class="actions">'+
+    '<td data-label="Cuenta"><b>'+accountKindIcon(a)+' '+esc(a.name)+'</b><div class="muted">'+esc(accountKind(a))+'</div></td>'+
+    '<td data-label="Saldo actual"><strong>'+money(Number(a.balance||0))+'</strong></td>'+
+    '<td data-label="Tipo">'+esc(a.type||'')+'</td>'+
+    '<td data-label="Acciones"><div class="actions">'+
       '<button class="btn" data-edit-account="'+a.id+'">✏ Editar</button>'+
       '<button class="btn" data-adjust-account="'+a.id+'">⚖ Ajustar saldo</button>'+
       '<button class="btn" data-adjust-history="'+a.id+'">Historial</button>'+
@@ -1542,7 +1823,7 @@ function renderDataStatus(){
  '<div class="row"><div><b>Cierres POS</b></div><strong>'+db.posCloses.length+'</strong></div>';
 }
 function exportData(){
- const payload={app:'Panorama Finanzas',version:'PF-V1-038',exportedAt:new Date().toISOString(),data:db};
+ const payload={app:'Panorama Finanzas',version:'PF-V1-040',exportedAt:new Date().toISOString(),data:db};
  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
  const url=URL.createObjectURL(blob),a=document.createElement('a');
  a.href=url;a.download='Panorama_Finanzas_Backup_'+today()+'.json';a.click();URL.revokeObjectURL(url);
@@ -1591,7 +1872,7 @@ document.getElementById('filterMoves').addEventListener('change',renderMoves);
 document.getElementById('resultFrom').style.display='none';document.getElementById('resultTo').style.display='none';renderAll();
 
 
-// PF-V1-038 — handlers de Nómina y Pagos fijos dentro del mismo scope
+// PF-V1-040 — handlers de Nómina y Pagos fijos dentro del mismo scope
 document.addEventListener('click',function(ev){
  const t=ev.target.closest?.('#newPayrollEmployee,#newPayrollEmployee2,#newPayrollPayment,#newFixedPayment');
  if(!t)return;
