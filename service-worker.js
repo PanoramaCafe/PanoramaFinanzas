@@ -1,4 +1,4 @@
-const CACHE_NAME="panorama-finanzas-static-v40";
+const CACHE_NAME="panorama-finanzas-static-v41";
 const APP_SHELL=["./","./index.html","./manifest.json"];
 self.addEventListener("install",e=>e.waitUntil(caches.open(CACHE_NAME).then(c=>c.addAll(APP_SHELL)).then(()=>self.skipWaiting())));
 self.addEventListener("activate",e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE_NAME).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
@@ -8,7 +8,11 @@ self.addEventListener("fetch",e=>{
  const url=new URL(e.request.url);
  if(e.request.mode==="navigate"||url.pathname.endsWith("/index.html")){
    e.respondWith(fetch(e.request,{cache:"no-store"}).then(r=>{const copy=r.clone();caches.open(CACHE_NAME).then(c=>c.put("./index.html",copy));return r;}).catch(()=>caches.match("./index.html").then(r=>r||caches.match("./"))));
- }else{
-   e.respondWith(caches.match(e.request).then(c=>c||fetch(e.request)));
+   return;
  }
+ if(["/panorama-core-integration.js","/supabase-config.js","/panorama-auth.js"].some(path=>url.pathname.endsWith(path))){
+   e.respondWith(fetch(e.request,{cache:"no-store"}).catch(()=>caches.match(e.request)));
+   return;
+ }
+ e.respondWith(caches.match(e.request).then(c=>c||fetch(e.request)));
 });
