@@ -4,7 +4,7 @@
   if(!cfg?.url||!cfg?.key){console.warn('Panorama Core: missing config');return;}
   await (window.PanoramaAuth?.ready||Promise.resolve());
   const api=cfg.url+'/rest/v1/', STORAGE='panorama_finanzas_pf_v1_010', STATE_ID='finanzas-main';
-  let syncing=false,lastSerialized=null;
+  let syncing=false,lastSerialized=null,syncPromise=null;
 
   async function request(path,opts={}){
     const base=window.PanoramaAuth?.headers?.()||{apikey:cfg.key,Authorization:'Bearer '+cfg.key,'Content-Type':'application/json'};
@@ -15,15 +15,18 @@
   }
   async function readRemoteState(){const rows=await request('panorama_finanzas_state?id=eq.'+encodeURIComponent(STATE_ID)+'&select=data,updated_at');return rows?.[0]||null;}
   async function writeRemoteState(data){await request('panorama_finanzas_state',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal','Content-Type':'application/json'},body:JSON.stringify({id:STATE_ID,data})});}
-  async function syncNow(state){
+  function syncNow(state){
     const raw=JSON.stringify(state||readState());
-    if(syncing)return false;
-    try{syncing=true;await writeRemoteState(JSON.parse(raw));lastSerialized=raw;return true;}
-    catch(e){console.warn('Panorama Finanzas: state sync failed',e);return false;}
-    finally{syncing=false;}
+    if(syncPromise)return syncPromise;
+    syncPromise=(async()=>{
+      try{syncing=true;await writeRemoteState(JSON.parse(raw));lastSerialized=raw;return true;}
+      catch(e){console.warn('Panorama Finanzas: state sync failed',e);return false;}
+      finally{syncing=false;syncPromise=null;}
+    })();
+    return syncPromise;
   }
   function readState(){try{return JSON.parse(localStorage.getItem(STORAGE)||'{}')}catch(_){return {}}}
-  function writeState(state){const raw=JSON.stringify(state);localStorage.setItem(STORAGE,raw);lastSerialized=null;refreshNegativeBalanceNotice();return syncNow(state);}
+  function writeState(state){const raw=JSON.stringify(state);localStorage.setItem(STORAGE,raw);lastSerialized=null;refreshNegativeBalanceNotice();}
 
   window.PanoramaCoreFinance={
     employees(){return request('employees?active=eq.true&select=id,full_name,personal_data&order=full_name.asc');},
@@ -57,7 +60,7 @@
     box.style.cssText='position:fixed;right:16px;bottom:16px;z-index:9999;max-width:360px;padding:12px 14px;background:#fff7ed;border:1px solid #f2c98d;border-radius:10px;color:#7c4a03;font:12px Arial,sans-serif;box-shadow:0 6px 22px rgba(0,0,0,.14)';
     box.innerHTML='<b>Observación financiera</b><br>'+neg.map(a=>String(a.name||a.id)+': $'+Number(a.balance).toFixed(2)).join('<br>')+'<br><span style="color:#8a6d4b">El saldo negativo no bloquea operaciones.</span>';
   }
-  async function closeAndReload(state){await syncNow(state);document.querySelector('.modal.open')?.classList.remove('open');location.reload();}
+  async function closeAndReload(state){const ok=await syncNow(state);if(!ok)console.warn('Panorama Finanzas: no se confirmó la sincronización antes de recargar');document.querySelector('.modal.open')?.classList.remove('open');location.reload();}
 
   document.addEventListener('submit',async ev=>{
     const form=ev.target;
@@ -84,7 +87,7 @@
     }catch(error){console.error('Panorama Finanzas: movimiento no registrado',error);alert(error?.message||'No fue posible registrar el movimiento.');}
   },true);
 
-  window.applyExternalFinancialEvent=function(payload){const p=payload||{},state=readState(),acc=getAccount(state,p.accountId),amount=Number(p.amount||0);if(!acc)throw new Error('Cuenta no encontrada');if(!Number.isFinite(amount)||amount<=0)throw new Error('Importe inválido');const before=Number(acc.balance||0);acc.balance=Number((before+((p.direction||'out')==='out'?-amount:amount)).toFixed(2));if((p.direction||'out')==='out')addNegativeObservation(state,acc,before,amount,'Evento financiero externo');writeState(state);return {accountId:acc.id,balance:acc.balance};};
+  window.applyExternalFinancialEvent=function(payload){const p=payload||{},state=readState(),acc=getAccount(state,p.accountId),amount=Number(p.amount||0);if(!acc)throw new Error('Cuenta no encontrada');if(!Number.isFinite(amount)||amount<=0)throw new Error('Importe inválido');const before=Number(acc.balance||0);acc.balance=Number((before+((p.direction||'out')==='out'?-amount:amount)).toFixed(2));if((p.direction||'out')==='out')addNegativeObservation(state,acc,before,amount,'Evento financiero externo');writeState(state);syncNow(state);return {accountId:acc.id,balance:acc.balance};};
 
   await bootstrapFinanceState();refreshNegativeBalanceNotice();
   setInterval(async()=>{const raw=localStorage.getItem(STORAGE);if(raw&&raw!==lastSerialized)await syncNow(JSON.parse(raw));},2000);
