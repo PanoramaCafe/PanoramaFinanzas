@@ -1,6 +1,5 @@
 /* Panorama Finanzas <-> Panorama Café Core
-   Sincroniza exclusivamente el almacenamiento real de Finanzas.
-   Sin heurísticas, sin reconstruir movimientos y sin modificar la lógica financiera.
+   Integración mínima: sincroniza únicamente el estado real que Panorama Finanzas entrega.
 */
 (async()=>{
   const cfg=window.PANORAMA_SUPABASE;
@@ -8,9 +7,8 @@
   await (window.PanoramaAuth?.ready||Promise.resolve());
 
   const API=cfg.url+'/rest/v1/';
-  const STORAGE='panorama_finanzas_pf_v1_010';
   const STATE_ID='finanzas-main';
-  let syncing=null,last='';
+  let syncing=null;
 
   function headers(extra={}){
     const auth=window.PanoramaAuth?.headers?.()||{};
@@ -24,31 +22,17 @@
     return text?JSON.parse(text):null;
   }
 
-  function readState(){
-    const raw=localStorage.getItem(STORAGE);
-    if(!raw)return null;
-    try{
-      const state=JSON.parse(raw);
-      return state&&typeof state==='object'&&!Array.isArray(state)?state:null;
-    }catch(error){
-      console.warn('Panorama Finanzas: estado local inválido',error);
-      return null;
-    }
-  }
-
-  async function syncState(state=readState()){
-    if(!state||typeof state!=='object'||Array.isArray(state))return false;
-    const serialized=JSON.stringify(state);
-    if(serialized===last)return true;
+  function syncState(state){
+    if(!state||typeof state!=='object'||Array.isArray(state))return Promise.resolve(false);
     if(syncing)return syncing;
+    const snapshot=structuredClone?structuredClone(state):JSON.parse(JSON.stringify(state));
     syncing=(async()=>{
       try{
         await request('panorama_finanzas_state?on_conflict=id',{
           method:'POST',
           headers:{Prefer:'resolution=merge-duplicates,return=minimal'},
-          body:JSON.stringify({id:STATE_ID,data:state})
+          body:JSON.stringify({id:STATE_ID,data:snapshot})
         });
-        last=serialized;
         window.dispatchEvent(new CustomEvent('panorama-core-finance-synced',{detail:{id:STATE_ID}}));
         return true;
       }catch(error){
@@ -65,26 +49,10 @@
     paymentHistory(){return request('personal_payment_records?select=*&order=created_at.desc');},
     confirm(requestRow,movementId,accountId,_paidAt,notes=''){
       if(requestRow.status!=='PENDING_PAYMENT')throw new Error('La solicitud ya no está pendiente.');
-      return request('rpc/confirm_payroll_payment',{method:'POST',body:JSON.stringify({
-        p_payment_request_id:requestRow.id,
-        p_financial_movement_id:String(movementId),
-        p_financial_account_id:String(accountId),
-        p_amount:Number(requestRow.amount),
-        p_notes:notes
-      })});
+      return request('rpc/confirm_payroll_payment',{method:'POST',body:JSON.stringify({p_payment_request_id:requestRow.id,p_financial_movement_id:String(movementId),p_financial_account_id:String(accountId),p_amount:Number(requestRow.amount),p_notes:notes})});
     },
     syncState
   };
 
-  const originalSetItem=localStorage.setItem.bind(localStorage);
-  localStorage.setItem=function(key,value){
-    originalSetItem(key,value);
-    if(key===STORAGE){
-      try{syncState(JSON.parse(value));}
-      catch(error){console.warn('Panorama Finanzas: no se pudo leer el estado guardado',error);}
-    }
-  };
-
-  await syncState();
   window.dispatchEvent(new CustomEvent('panorama-core-finance-ready'));
 })();
