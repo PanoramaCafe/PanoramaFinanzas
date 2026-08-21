@@ -11,21 +11,27 @@
     const payments=await request('panorama_payroll_payments?select=*&order=paid_date.asc,created_at.asc');
     if(!Array.isArray(payments)||!payments.length)return false;
     state.moves=Array.isArray(state.moves)?state.moves:[];state.accounts=Array.isArray(state.accounts)?state.accounts:[];
-    let changed=false;
+    let changed=false,imported=[];
     for(const p of payments){
       if(state.moves.some(m=>String(m.sourceRecordId||'')===String(p.id)||String(m.personalPaymentId||'')===String(p.id)))continue;
       const accountId=state.accounts.some(a=>a.id===p.account)?p.account:(state.accounts.some(a=>a.id==='principal')?'principal':state.accounts[0]?.id);
       if(!accountId)continue;
       const account=state.accounts.find(a=>a.id===accountId),amount=Number(p.amount||0);if(!Number.isFinite(amount)||amount<0)continue;
       const period=p.period_start&&p.period_end?(p.period_start+' al '+p.period_end):'';
-      state.moves.push({id:'personal-'+p.id,to:null,from:accountId,date:p.paid_date,type:'salida',amount,origin:'nomina',account:accountId,concept:'Nómina — '+(p.employee_name||'Empleado'),note:[p.note,period].filter(Boolean).join(' · '),category:'nomina',created:Date.now(),externalId:String(p.id),sourceRecordId:String(p.id),personalPaymentId:String(p.id)});
-      account.balance=Number(account.balance||0)-amount;changed=true;
+      const move={id:'personal-'+p.id,to:null,from:accountId,date:p.paid_date,type:'salida',amount,origin:'nomina',account:accountId,concept:'Nómina — '+(p.employee_name||'Empleado'),note:[p.note,period].filter(Boolean).join(' · '),category:'nomina',created:Date.now(),externalId:String(p.id),sourceRecordId:String(p.id),personalPaymentId:String(p.id),employeeId:p.employee_id||null,employeeName:p.employee_name||'Empleado',periodStart:p.period_start||null,periodEnd:p.period_end||null,linkedSource:'panorama-personal'};
+      state.moves.push(move);
+      account.balance=Number(account.balance||0)-amount;changed=true;imported.push(move);
     }
+    if(changed)window.dispatchEvent(new CustomEvent('panorama-personal-payments-imported',{detail:{moves:imported,state}}));
     return changed;
+  }
+  function refreshUiAfterImport(){
+    try{if(typeof window.renderAll==='function')window.renderAll();}catch(e){console.warn('Panorama Finanzas: no se pudo actualizar la interfaz tras importar nómina.',e);}
+    window.dispatchEvent(new Event('panorama-finanzas-refresh'));
   }
   async function remoteState(){
     const r=await fetch(base+'panorama_finanzas_state?id=eq.'+encodeURIComponent(ROW_ID)+'&select=data,updated_at',{headers});const raw=await r.text();if(!r.ok)throw new Error(raw||r.statusText);const row=raw?JSON.parse(raw)[0]||null:null;if(!row?.data)return row;
-    const changed=await importPersonalPayments(row.data);if(changed){const synced=await syncState(row.data);if(synced?.updatedAt)row.updated_at=synced.updatedAt;}
+    const changed=await importPersonalPayments(row.data);if(changed){const synced=await syncState(row.data);if(synced?.updatedAt)row.updated_at=synced.updatedAt;refreshUiAfterImport();}
     if(row?.updated_at)lastRemoteAt=row.updated_at;return row;
   }
   function receiveEvent(event){if(!event||typeof event!=='object'||!event.type)return {accepted:false,reason:'invalid-event'};window.dispatchEvent(new CustomEvent('panorama-finanzas-event',{detail:event}));return {accepted:true};}
