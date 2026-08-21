@@ -1,0 +1,91 @@
+name: Clean finance sync
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/clean-finance-sync.yml'
+permissions:
+  contents: write
+jobs:
+  clean:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Replace polling with startup and resume refresh
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('js/app.js')
+          s=p.read_text()
+          old="""  let remoteSyncTimer=null;
+  async function pullRemoteState(){
+    try{
+      const remote=await window.PanoramaCoreFinance?.remoteState?.();
+      if(remote?.data && Object.keys(remote.data).length) applyRemoteState(remote.data);
+      return remote||null;
+    }catch(e){
+      console.warn('Panorama Finanzas: no se pudo recibir estado remoto',e);
+      return null;
+    }
+  }
+
+  window.addEventListener('panorama-core-finance-ready', async function(){
+    const remote=await pullRemoteState();
+    if(!remote?.data || !Object.keys(remote.data).length){
+      window.PanoramaCoreFinance?.syncState(db);
+    }
+    if(remoteSyncTimer===null){
+      remoteSyncTimer=setInterval(pullRemoteState,5000);
+    }
+  });
+
+  window.PanoramaFinanceApp={
+    applyRemoteState,
+    pullRemoteState,"""
+          new="""  let remotePulling=false;
+  async function pullRemoteState(){
+    if(remotePulling) return null;
+    remotePulling=true;
+    try{
+      const remote=await window.PanoramaCoreFinance?.remoteState?.();
+      if(remote?.data && Object.keys(remote.data).length) applyRemoteState(remote.data);
+      return remote||null;
+    }catch(e){
+      console.warn('Panorama Finanzas: no se pudo recibir el estado remoto.',e);
+      return null;
+    }finally{
+      remotePulling=false;
+    }
+  }
+
+  function refreshRemoteState(){
+    if(document.visibilityState==='hidden') return null;
+    return pullRemoteState();
+  }
+
+  window.addEventListener('panorama-core-finance-ready', async function(){
+    const remote=await pullRemoteState();
+    if(!remote?.data || !Object.keys(remote.data).length){
+      await window.PanoramaCoreFinance?.syncState(db);
+    }
+  },{once:true});
+
+  window.addEventListener('focus',refreshRemoteState);
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible') refreshRemoteState();
+  });
+
+  window.PanoramaFinanceApp={
+    applyRemoteState,
+    pullRemoteState,
+    refreshRemoteState,"""
+          if old not in s:
+              raise SystemExit('Expected polling block not found; no changes made.')
+          p.write_text(s.replace(old,new,1))
+          PY
+          rm .github/workflows/clean-finance-sync.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add js/app.js .github/workflows/clean-finance-sync.yml
+          git commit -m "Replace sync polling with startup and resume refresh"
+          git push
