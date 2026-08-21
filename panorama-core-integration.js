@@ -63,6 +63,7 @@
   window.PanoramaCoreFinance={syncState,remoteState,receiveEvent,publishEvent,getSummary,
     employees:()=>request('employees?active=eq.true&select=id,full_name,personal_data&order=full_name.asc'),
     pending:()=>request('payroll_payment_requests?status=eq.PENDING_PAYMENT&select=*,employees(full_name)&order=requested_at.asc'),
+    directPayments:()=>request('panorama_payroll_payments?select=*&order=paid_date.desc,created_at.desc'),
     paymentHistory:()=>request('personal_payment_records?select=*&order=created_at.desc'),
     confirm(requestRow,movementId,accountId,_paidAt,notes=''){
       if(!requestRow||requestRow.status!=='PENDING_PAYMENT') throw new Error('La solicitud ya no está pendiente.');
