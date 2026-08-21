@@ -1,6 +1,6 @@
 /* Panorama Finanzas — contrato de integración */
 (function(){
-  const cfg=window.PANORAMA_SUPABASE,ROW_ID='finanzas-main';
+  const cfg=window.PANORAMA_SUPABASE,ROW_ID='finanzas-main',PERSONAL_ROW_ID='personal-main';
   if(!cfg?.url||!cfg?.key){console.error('Panorama Finanzas: falta la configuración de Supabase.');return;}
   const base=cfg.url+'/rest/v1/',headers={apikey:cfg.key,Authorization:'Bearer '+cfg.key,'Content-Type':'application/json'};
   let busy=false,lastRemoteAt='';
@@ -8,9 +8,27 @@
   async function request(path,options={}){const r=await fetch(base+path,{...options,headers:{...headers,...(options.headers||{})}});const text=await r.text();if(!r.ok)throw new Error(text||r.statusText);return text?JSON.parse(text):null;}
   async function syncState(state){if(busy||!valid(state))return {ok:false,skipped:true};busy=true;try{const r=await fetch(base+'panorama_finanzas_state?on_conflict=id',{method:'POST',headers:{...headers,Prefer:'resolution=merge-duplicates,return=representation'},body:JSON.stringify({id:ROW_ID,data:state})});const raw=await r.text();if(!r.ok)throw new Error(raw||r.statusText);const row=raw?JSON.parse(raw)[0]||null:null;lastRemoteAt=row?.updated_at||lastRemoteAt;return {ok:true,updatedAt:lastRemoteAt};}catch(error){console.warn('Panorama Finanzas: no se pudo sincronizar.',error);return {ok:false,error};}finally{busy=false;}}
   function isPersonalMove(m){return m&&((m.linkedSource==='panorama-personal')||String(m.origin||'')==='panorama-personal'||(m.sourceRecordId&&m.personalPaymentId));}
+  async function getPersonalPayments(){
+    /* La fuente de verdad es el estado actual de Panorama Personal.
+       No dependemos de la tabla puente, que puede conservar registros antiguos. */
+    const rows=await request('panorama_personal_state?id=eq.'+encodeURIComponent(PERSONAL_ROW_ID)+'&select=data');
+    const data=Array.isArray(rows)?rows[0]?.data:null;
+    const payments=Array.isArray(data?.payments)?data.payments:[];
+    const employees=new Map((Array.isArray(data?.employees)?data.employees:[]).map(e=>[String(e.id),e]));
+    return payments.filter(p=>p?.id).map(p=>({
+      id:String(p.id),
+      employee_id:p.employeeId!=null?String(p.employeeId):null,
+      employee_name:String(employees.get(String(p.employeeId))?.name||p.employeeName||'Empleado'),
+      amount:Number(p.amount||0),
+      paid_date:String(p.paidDate||new Date().toISOString().slice(0,10)).slice(0,10),
+      period_start:p.periodStart?String(p.periodStart).slice(0,10):null,
+      period_end:p.periodEnd?String(p.periodEnd).slice(0,10):null,
+      note:String(p.note||''),
+      account:p.account?String(p.account):null
+    })).filter(p=>p.employee_id&&Number.isFinite(p.amount)&&p.amount>=0);
+  }
   async function reconcilePersonalPayments(state){
-    const payments=await request('panorama_payroll_payments?select=*&order=paid_date.asc,created_at.asc');
-    const activePayments=Array.isArray(payments)?payments:[];
+    const activePayments=await getPersonalPayments();
     const activeIds=new Set(activePayments.map(p=>String(p.id)));
     state.moves=Array.isArray(state.moves)?state.moves:[];state.accounts=Array.isArray(state.accounts)?state.accounts:[];
     let changed=false,imported=[],removed=[];
@@ -39,10 +57,7 @@
     if(changed)window.dispatchEvent(new CustomEvent('panorama-personal-payments-reconciled',{detail:{imported,removed,state}}));
     return changed;
   }
-  function refreshUiAfterImport(){
-    try{if(typeof window.renderAll==='function')window.renderAll();}catch(e){console.warn('Panorama Finanzas: no se pudo actualizar la interfaz tras reconciliar nómina.',e);}
-    window.dispatchEvent(new Event('panorama-finanzas-refresh'));
-  }
+  function refreshUiAfterImport(){try{if(typeof window.renderAll==='function')window.renderAll();}catch(e){console.warn('Panorama Finanzas: no se pudo actualizar la interfaz.',e);}window.dispatchEvent(new Event('panorama-finanzas-refresh'));}
   async function remoteState(){
     const r=await fetch(base+'panorama_finanzas_state?id=eq.'+encodeURIComponent(ROW_ID)+'&select=data,updated_at',{headers});const raw=await r.text();if(!r.ok)throw new Error(raw||r.statusText);const row=raw?JSON.parse(raw)[0]||null:null;if(!row?.data)return row;
     const changed=await reconcilePersonalPayments(row.data);if(changed){const synced=await syncState(row.data);if(synced?.updatedAt)row.updated_at=synced.updatedAt;refreshUiAfterImport();}
