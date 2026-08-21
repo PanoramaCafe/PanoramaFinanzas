@@ -1,74 +1,69 @@
 /* Panorama Finanzas <-> Panorama Café Core
-   Puente mínimo de sincronización.
-   Fuente única: la misma clave que index.html persiste.
+   Puente directo y verificable.
 */
 (async()=>{
-  const cfg=window.PANORAMA_SUPABASE;
-  if(!cfg?.url||!cfg?.key)return;
-  await (window.PanoramaAuth?.ready||Promise.resolve());
+  const STATUS='__panoramaFinanceSync';
+  const report=(stage,detail={})=>window[STATUS]={stage,at:new Date().toISOString(),...detail};
+  report('starting');
+  try{
+    const cfg=window.PANORAMA_SUPABASE;
+    if(!cfg?.url||!cfg?.key){report('config-missing');return;}
+    report('config-ready');
+    await (window.PanoramaAuth?.ready||Promise.resolve());
+    report('auth-ready');
 
-  const API=cfg.url+'/rest/v1/';
-  const STATE_ID='finanzas-main';
-  const STORAGE='panorama_finanzas_pf_v1_010';
-  let syncing=null;
-  let lastRaw='';
+    const API=cfg.url+'/rest/v1/';
+    const STATE_ID='finanzas-main';
+    const STORAGE='panorama_finanzas_pf_v1_010';
+    let syncing=null,lastRaw='';
+    const headers=()=>({apikey:cfg.key,Authorization:'Bearer '+cfg.key,'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=minimal'});
 
-  function headers(extra={}){
-    const auth=window.PanoramaAuth?.headers?.()||{};
-    return {apikey:cfg.key,Authorization:'Bearer '+cfg.key,'Content-Type':'application/json',...auth,...extra};
-  }
-
-  async function syncRaw(raw){
-    if(!raw||raw===lastRaw)return false;
-    let state;
-    try{state=JSON.parse(raw);}catch{return false;}
-    if(!state||typeof state!=='object'||Array.isArray(state)||Object.keys(state).length===0)return false;
-    if(syncing)return syncing;
-    const snapshot=JSON.parse(JSON.stringify(state));
-    syncing=(async()=>{
-      try{
-        const response=await fetch(API+'panorama_finanzas_state?on_conflict=id',{
-          method:'POST',
-          headers:headers({Prefer:'resolution=merge-duplicates,return=minimal'}),
-          body:JSON.stringify({id:STATE_ID,data:snapshot})
-        });
-        if(!response.ok)throw new Error(await response.text());
+    async function publishRaw(raw,source){
+      report('reading',{source,hasRaw:!!raw,length:raw?.length||0});
+      if(!raw)return false;
+      let data;
+      try{data=JSON.parse(raw);}catch(error){report('json-invalid',{source,error:String(error)});return false;}
+      if(!data||typeof data!=='object'||Array.isArray(data)||Object.keys(data).length===0){report('state-empty',{source,keys:data&&typeof data==='object'?Object.keys(data):[]});return false;}
+      if(raw===lastRaw){report('unchanged',{source,keys:Object.keys(data)});return true;}
+      if(syncing)return syncing;
+      report('publishing',{source,keys:Object.keys(data)});
+      syncing=(async()=>{
+        const response=await fetch(API+'panorama_finanzas_state?on_conflict=id',{method:'POST',headers:headers(),body:JSON.stringify({id:STATE_ID,data})});
+        const text=await response.text();
+        if(!response.ok){report('publish-error',{status:response.status,body:text});throw new Error(text||response.statusText);}
         lastRaw=raw;
-        window.dispatchEvent(new CustomEvent('panorama-core-finance-synced'));
+        report('published',{status:response.status,keys:Object.keys(data)});
+        window.dispatchEvent(new CustomEvent('panorama-core-finance-synced',{detail:{id:STATE_ID,keys:Object.keys(data)}}));
         return true;
-      }catch(error){
-        console.warn('Panorama Finanzas: sincronización fallida',error);
-        return false;
-      }finally{syncing=null;}
-    })();
-    return syncing;
+      })().catch(error=>{console.error('Panorama Finanzas: sincronización fallida',error);return false;}).finally(()=>{syncing=null;});
+      return syncing;
+    }
+
+    function syncPersistedState(source='manual'){
+      try{return publishRaw(localStorage.getItem(STORAGE),source);}catch(error){report('storage-error',{source,error:String(error)});return Promise.resolve(false);}
+    }
+
+    async function api(path){
+      const r=await fetch(API+path,{headers:{apikey:cfg.key,Authorization:'Bearer '+cfg.key}});
+      if(!r.ok)throw new Error(await r.text());
+      return r.json();
+    }
+    window.PanoramaCoreFinance={
+      employees(){return api('employees?active=eq.true&select=id,full_name,personal_data&order=full_name.asc');},
+      pending(){return api('payroll_payment_requests?status=eq.PENDING_PAYMENT&select=*,employees(full_name)&order=requested_at.asc');},
+      paymentHistory(){return api('personal_payment_records?select=*&order=created_at.desc');},
+      syncState(state){return publishRaw(JSON.stringify(state),'direct');},
+      syncPersistedState,
+      status(){return window[STATUS]||null;}
+    };
+
+    report('ready');
+    await syncPersistedState('boot');
+    window.addEventListener('pageshow',()=>syncPersistedState('pageshow'));
+    window.addEventListener('storage',event=>{if(event.key===STORAGE)syncPersistedState('storage-event');});
+    window.dispatchEvent(new CustomEvent('panorama-core-finance-ready'));
+  }catch(error){
+    report('fatal',{error:String(error),stack:error?.stack||''});
+    console.error('Panorama Finanzas: integrador no iniciado',error);
   }
-
-  function syncPersistedState(){
-    return syncRaw(localStorage.getItem(STORAGE));
-  }
-
-  window.PanoramaCoreFinance={
-    employees(){return fetch(API+'employees?active=eq.true&select=id,full_name,personal_data&order=full_name.asc',{headers:headers()}).then(r=>r.json());},
-    pending(){return fetch(API+'payroll_payment_requests?status=eq.PENDING_PAYMENT&select=*,employees(full_name)&order=requested_at.asc',{headers:headers()}).then(r=>r.json());},
-    paymentHistory(){return fetch(API+'personal_payment_records?select=*&order=created_at.desc',{headers:headers()}).then(r=>r.json());},
-    syncState(state){return syncRaw(JSON.stringify(state));},
-    syncPersistedState
-  };
-
-  /* Un único intento al cargar y reintentos breves solo durante el arranque. */
-  async function bootstrap(){
-    if(await syncPersistedState())return;
-    let attempts=0;
-    const timer=setInterval(async()=>{
-      attempts++;
-      const ok=await syncPersistedState();
-      if(ok||attempts>=5)clearInterval(timer);
-    },1000);
-  }
-
-  if(document.readyState==='complete')bootstrap();
-  else window.addEventListener('load',bootstrap,{once:true});
-  window.addEventListener('pageshow',syncPersistedState);
-  window.dispatchEvent(new CustomEvent('panorama-core-finance-ready'));
 })();
