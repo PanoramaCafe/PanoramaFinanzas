@@ -1,5 +1,7 @@
 /* Panorama Finanzas <-> Panorama Café Core
-   Integración mínima: sincroniza únicamente el estado real que Panorama Finanzas entrega.
+   Un único estado financiero y una única ruta de sincronización.
+   El index.html guarda el estado con save(); aquí nos enganchamos a esa función
+   y publicamos la misma clave oficial sin reconstruir movimientos ni saldos.
 */
 (async()=>{
   const cfg=window.PANORAMA_SUPABASE;
@@ -8,6 +10,7 @@
 
   const API=cfg.url+'/rest/v1/';
   const STATE_ID='finanzas-main';
+  const STORAGE='panorama_finanzas_pf_v1_010';
   let syncing=null;
 
   function headers(extra={}){
@@ -22,10 +25,16 @@
     return text?JSON.parse(text):null;
   }
 
+  function cloneState(state){
+    return typeof structuredClone==='function'
+      ? structuredClone(state)
+      : JSON.parse(JSON.stringify(state));
+  }
+
   function syncState(state){
     if(!state||typeof state!=='object'||Array.isArray(state))return Promise.resolve(false);
     if(syncing)return syncing;
-    const snapshot=structuredClone?structuredClone(state):JSON.parse(JSON.stringify(state));
+    const snapshot=cloneState(state);
     syncing=(async()=>{
       try{
         await request('panorama_finanzas_state?on_conflict=id',{
@@ -43,6 +52,31 @@
     return syncing;
   }
 
+  function readLocalState(){
+    try{
+      const raw=localStorage.getItem(STORAGE);
+      return raw?JSON.parse(raw):null;
+    }catch(error){
+      console.warn('Panorama Finanzas: estado local inválido',error);
+      return null;
+    }
+  }
+
+  function connectToSave(){
+    if(typeof window.save!=='function')return false;
+    if(window.save.__panoramaFinanceSync)return true;
+    const originalSave=window.save;
+    function syncedSave(...args){
+      const result=originalSave.apply(this,args);
+      const state=readLocalState();
+      if(state)syncState(state);
+      return result;
+    }
+    syncedSave.__panoramaFinanceSync=true;
+    window.save=syncedSave;
+    return true;
+  }
+
   window.PanoramaCoreFinance={
     employees(){return request('employees?active=eq.true&select=id,full_name,personal_data&order=full_name.asc');},
     pending(){return request('payroll_payment_requests?status=eq.PENDING_PAYMENT&select=*,employees(full_name)&order=requested_at.asc');},
@@ -54,5 +88,8 @@
     syncState
   };
 
+  connectToSave();
+  const existing=readLocalState();
+  if(existing)syncState(existing);
   window.dispatchEvent(new CustomEvent('panorama-core-finance-ready'));
 })();
