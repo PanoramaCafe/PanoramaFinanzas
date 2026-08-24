@@ -1,88 +1,43 @@
-/* Panorama Finanzas — sincronización offline segura */
+/* Panorama Finanzas — MASTER SYNC v1
+   Supabase es la base maestra. Los dispositivos ya no reemplazan el estado completo.
+   Cada guardado se convierte en un evento independiente dentro de la tabla existente.
+*/
 (function(){
 'use strict';
-const cfg=window.PANORAMA_SUPABASE,ROW_ID='finanzas-main',PERSONAL_ROW_ID='personal-main';
-const STORAGE_KEY='panorama_finanzas_pf_v1_010',QUEUE_KEY='panorama_finanzas_pending_v2',INIT_KEY='panorama_finanzas_initialized_v1';
+const cfg=window.PANORAMA_SUPABASE;
+const STORAGE_KEY='panorama_finanzas_pf_v1_010',ACK_KEY='panorama_finanzas_master_ack_v2',DEVICE_KEY='panorama_finanzas_device_v2';
+const ROW_ID='finanzas-main',EVENT_PREFIX='finanzas-event-',PERSONAL_ROW_ID='personal-main';
 if(!cfg?.url||!cfg?.key)return;
 const base=cfg.url+'/rest/v1/',headers={apikey:cfg.key,Authorization:'Bearer '+cfg.key,'Content-Type':'application/json'};
 let busy=false,lastRemoteAt='',retryTimer=null,booting=true;
 const clone=x=>x==null?x:JSON.parse(JSON.stringify(x));
-const valid=x=>x&&typeof x==='object'&&!Array.isArray(x)&&Object.keys(x).length>0;
 const read=k=>{try{return JSON.parse(localStorage.getItem(k)||'null')}catch{return null}};
 const write=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
-function queue(state){if(valid(state))write(QUEUE_KEY,clone(state));}
-function pending(){return read(QUEUE_KEY);}
-function schedule(){clearTimeout(retryTimer);retryTimer=setTimeout(flush,300);}
-async function request(path,options={}){const r=await fetch(base+path,{...options,headers:{...headers,...(options.headers||{})},cache:'no-store'});const t=await r.text();if(!r.ok)throw new Error(t||r.statusText);return t?JSON.parse(t):null;}
-async function put(state){const r=await fetch(base+'panorama_finanzas_state?on_conflict=id',{method:'POST',headers:{...headers,Prefer:'resolution=merge-duplicates,return=representation'},body:JSON.stringify({id:ROW_ID,data:state,updated_at:new Date().toISOString()})});const t=await r.text();if(!r.ok)throw new Error(t||r.statusText);return t?JSON.parse(t)[0]||null:null;}
-async function syncState(state){
- if(!valid(state))return {ok:false,skipped:true};
- queue(state);
- if(!navigator.onLine){schedule();return {ok:false,pending:true,offline:true};}
- return flush();
-}
-async function flush(){
- if(booting||busy||!navigator.onLine)return {ok:false,pending:!!pending()};
- const state=pending();if(!valid(state))return {ok:true,skipped:true};
- busy=true;
- try{
-   const row=await put(state);
-   lastRemoteAt=row?.updated_at||new Date().toISOString();
-   localStorage.removeItem(QUEUE_KEY);
-   if(row?.data)write(STORAGE_KEY,row.data);
-   window.dispatchEvent(new CustomEvent('panorama-finanzas-sync',{detail:{status:'synced',updatedAt:lastRemoteAt}}));
-   return {ok:true,updatedAt:lastRemoteAt};
- }catch(error){
-   console.warn('Panorama Finanzas: sincronización pendiente.',error);
-   window.dispatchEvent(new CustomEvent('panorama-finanzas-sync',{detail:{status:'pending',error}}));
-   return {ok:false,pending:true,error};
- }finally{busy=false;}
-}
-async function remoteState(){
- if(valid(pending()))await flush();
- const rows=await request('panorama_finanzas_state?id=eq.'+encodeURIComponent(ROW_ID)+'&select=data,updated_at');
- const row=Array.isArray(rows)?rows[0]||null:null;
- if(row?.updated_at)lastRemoteAt=row.updated_at;
- return row;
-}
-function isEmptyState(s){
- if(!valid(s))return true;
- const keys=['moves','accounts','providers','providerPayments','commitments','commitmentPayments','payrollEmployees','payrollPeriods','fixedPayments','cuts','reconciliations','posCloses','adjustments'];
- return keys.every(k=>!Array.isArray(s[k])||s[k].length===0);
-}
-async function initializeSync(){
- const already=localStorage.getItem(INIT_KEY)==='1';
- if(already){booting=false;return;}
- try{
-   const queued=pending();
-   if(valid(queued)){booting=false;return flush();}
-   const remote=await remoteState();
-   const local=read(STORAGE_KEY);
-   if(remote?.data){
-     write(STORAGE_KEY,clone(remote.data));
-     localStorage.setItem(INIT_KEY,'1');
-     window.dispatchEvent(new CustomEvent('panorama-finanzas-sync',{detail:{status:'initialized',updatedAt:remote.updated_at||null}}));
-   }else if(valid(local) && !isEmptyState(local)){
-     /* Dispositivo ya tenía datos reales: no los destruye ni publica por sorpresa. */
-     localStorage.setItem(INIT_KEY,'1');
-   }else{
-     localStorage.setItem(INIT_KEY,'1');
-   }
- }catch(error){
-   console.warn('Panorama Finanzas: no fue posible obtener el estado inicial.',error);
- }finally{booting=false;window.dispatchEvent(new Event('panorama-finanzas-core-ready'));}
-}
-function isPersonalMove(m){return m&&((m.linkedSource==='panorama-personal')||String(m.origin||'')==='panorama-personal'||(m.sourceRecordId&&m.personalPaymentId));}
-async function getPersonalPayments(){const rows=await request('panorama_personal_state?id=eq.'+encodeURIComponent(PERSONAL_ROW_ID)+'&select=data');const d=Array.isArray(rows)?rows[0]?.data:null;const em=new Map((d?.employees||[]).map(e=>[String(e.id),e]));return (d?.payments||[]).filter(p=>p?.id).map(p=>({id:String(p.id),employee_id:p.employeeId!=null?String(p.employeeId):null,employee_name:String(em.get(String(p.employeeId))?.name||p.employeeName||'Empleado'),amount:Number(p.amount||0),paid_date:String(p.paidDate||new Date().toISOString().slice(0,10)).slice(0,10),period_start:p.periodStart||null,period_end:p.periodEnd||null,note:String(p.note||''),account:p.account||null})).filter(p=>p.employee_id&&Number.isFinite(p.amount)&&p.amount>=0);}
-function receiveEvent(event){if(!event||typeof event!=='object'||!event.type)return {accepted:false};window.dispatchEvent(new CustomEvent('panorama-finanzas-event',{detail:event}));return {accepted:true};}
-function publishEvent(event){if(!event||typeof event!=='object'||!event.type)return false;window.dispatchEvent(new CustomEvent('panorama-finanzas-published',{detail:event}));return true;}
-function getSummary(){return {source:'finanzas',ready:true,updatedAt:lastRemoteAt||null,pending:!!pending(),indicators:{},alerts:[]};}
-function flatten(v){if(v==null)return '';if(Array.isArray(v))return v.map(flatten).join(', ');if(typeof v==='object')return Object.entries(v).map(([k,x])=>k+': '+flatten(x)).join(' | ');return v;}
-function normalizeRows(rows){return (Array.isArray(rows)?rows:[]).map(r=>r&&typeof r==='object'&&!Array.isArray(r)?Object.fromEntries(Object.entries(r).map(([k,v])=>[k,flatten(v)])):{valor:flatten(r)});}
-function exportExcelBackup(){let s=read(STORAGE_KEY)||{};const stamp=new Date().toISOString().slice(0,10),sheets=[['Resumen',[{generado:new Date().toISOString(),movimientos:(s.moves||[]).length,cuentas:(s.accounts||[]).length}]],['Cuentas',s.accounts],['Movimientos',s.moves],['Proveedores',s.providers],['Pagos proveedores',s.providerPayments],['Compromisos',s.commitments],['Pagos compromisos',s.commitmentPayments],['Empleados nómina',s.payrollEmployees],['Periodos nómina',s.payrollPeriods],['Pagos fijos',s.fixedPayments],['Cortes',s.cuts],['Conciliaciones',s.reconciliations],['Cierres POS',s.posCloses],['Ajustes',s.adjustments]];const esc=v=>{const x=String(v??'');return /[",\n]/.test(x)?'"'+x.replace(/"/g,'""')+'"':x};const text='\uFEFF'+sheets.map(([n,r])=>{const a=normalizeRows(r),k=[...new Set(a.flatMap(x=>Object.keys(x)))];return '### '+n+'\n'+(k.length?k.join(',')+'\n'+a.map(x=>k.map(z=>esc(x[z])).join(',')).join('\n'):'Sin registros')}).join('\n\n');const b=new Blob([text],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='Panorama_Finanzas_'+stamp+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),0);}
-function installExcelExport(){const anchor=document.getElementById('btnExportData');if(!anchor||document.getElementById('btnExportExcel'))return;const b=document.createElement('button');b.type='button';b.className='btn';b.id='btnExportExcel';b.textContent='⇩ Exportar datos (Excel)';b.onclick=exportExcelBackup;anchor.insertAdjacentElement('afterend',b);}
-window.PanoramaCoreFinance={syncState,remoteState,receiveEvent,publishEvent,getSummary,exportExcelBackup,flush,employees:()=>request('employees?active=eq.true&select=id,full_name,personal_data&order=full_name.asc'),pending:()=>request('payroll_payment_requests?status=eq.PENDING_PAYMENT&select=*,employees(full_name)&order=requested_at.asc'),paymentHistory:()=>request('personal_payment_records?select=*&order=created_at.desc'),directPayments:()=>request('panorama_payroll_payments?select=*&order=paid_date.desc,created_at.desc'),debugStatus:()=>({busy,lastRemoteAt,pending:!!pending(),online:navigator.onLine,rowId:ROW_ID,initialized:localStorage.getItem(INIT_KEY)==='1',booting})};
-window.addEventListener('online',()=>flush());document.addEventListener('visibilitychange',()=>{if(!document.hidden)flush()});setInterval(()=>flush(),4000);
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',installExcelExport);else installExcelExport();
-initializeSync();
+const valid=x=>x&&typeof x==='object'&&!Array.isArray(x);
+const uid=()=>Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,12);
+const device=()=>{let x=localStorage.getItem(DEVICE_KEY);if(!x){x='device-'+uid();localStorage.setItem(DEVICE_KEY,x)}return x};
+function schedule(){clearTimeout(retryTimer);retryTimer=setTimeout(flush,600)}
+async function request(path,options={}){const r=await fetch(base+path,{...options,headers:{...headers,...(options.headers||{})},cache:'no-store'});const t=await r.text();if(!r.ok)throw new Error(t||r.statusText);return t?JSON.parse(t):null}
+async function rows(){return request('panorama_finanzas_state?select=id,data,updated_at&order=updated_at.asc')}
+function byId(a){const m=new Map();(a||[]).forEach(x=>{if(x&&x.id!=null)m.set(String(x.id),x)});return m}
+function diff(prev,next){const upserts={},deletes={};const keys=new Set([...Object.keys(prev||{}),...Object.keys(next||{})]);for(const k of keys){if(k==='accounts'||!Array.isArray(prev?.[k])&&!Array.isArray(next?.[k]))continue;const a=byId(prev?.[k]),b=byId(next?.[k]),u=[],d=[];for(const [id,v] of b)if(!a.has(id)||JSON.stringify(a.get(id))!==JSON.stringify(v))u.push(clone(v));for(const id of a.keys())if(!b.has(id))d.push(id);if(u.length)upserts[k]=u;if(d.length)deletes[k]=d}return {upserts,deletes}}
+function accountDelta(prev,next){const out={};const a=byId(prev?.accounts),b=byId(next?.accounts);for(const [id,v] of b){const delta=Number(v.balance||0)-Number(a.get(id)?.balance||0);if(delta)out[id]=delta}for(const [id,v] of a)if(!b.has(id)){const delta=-Number(v.balance||0);if(delta)out[id]=delta}return out}
+function accountMeta(state){return (state?.accounts||[]).map(a=>{const x=clone(a);delete x.balance;return x})}
+function makeEvent(prev,next){const d=diff(prev,next),scalars={};for(const k of Object.keys(next||{})){if(k==='accounts'||Array.isArray(next[k]))continue;if(JSON.stringify(prev?.[k])!==JSON.stringify(next[k]))scalars[k]=clone(next[k])}return {id:EVENT_PREFIX+uid(),created_at:new Date().toISOString(),data:{kind:'finance-event-v1',eventId:uid(),device:device(),createdAt:new Date().toISOString(),accountDeltas:accountDelta(prev,next),accountMeta:accountMeta(next),upserts:d.upserts,deletes:d.deletes,scalars}}}
+function applyEvent(state,event){const out=clone(state)||{},d=event?.data?.kind==='finance-event-v1'?event.data:event;out.accounts=clone(out.accounts||[]);const am=byId(out.accounts);for(const a of d?.accountMeta||[]){const old=am.get(String(a.id));am.set(String(a.id),old?{...old,...clone(a)}:clone(a))}for(const [id,n] of Object.entries(d?.accountDeltas||{})){const a=am.get(String(id));if(a){a.balance=Number(a.balance||0)+Number(n||0);am.set(String(id),a)}}out.accounts=[...am.values()];for(const [k,items] of Object.entries(d?.upserts||{})){if(k==='accounts')continue;const m=byId(out[k]);for(const item of items||[])m.set(String(item.id),clone(item));out[k]=[...m.values()]}for(const [k,ids] of Object.entries(d?.deletes||{})){if(k==='accounts')continue;const dead=new Set((ids||[]).map(String));out[k]=(out[k]||[]).filter(x=>!dead.has(String(x?.id)))}for(const [k,v] of Object.entries(d?.scalars||{}))out[k]=clone(v);return out}
+async function master(){const all=await rows(),baseline=all.find(r=>r.id===ROW_ID),events=all.filter(r=>String(r.id||'').startsWith(EVENT_PREFIX)).sort((a,b)=>String(a.updated_at||'').localeCompare(String(b.updated_at||'')));let state=clone(baseline?.data||{});for(const e of events)state=applyEvent(state,e.data);return {state,baseline,events}}
+async function publish(e){return request('panorama_finanzas_state',{method:'POST',headers:{...headers,Prefer:'return=representation'},body:JSON.stringify({id:e.id,data:e.data,updated_at:e.created_at})})}
+function hasLocalData(s){return valid(s)&&((s.moves?.length||0)+(s.providers?.length||0)+(s.commitments?.length||0)+(s.cuts?.length||0)+(s.providerPayments?.length||0)+(s.commitmentPayments?.length||0)+(s.payrollEmployees?.length||0)+(s.payrollPeriods?.length||0)+(s.fixedPayments?.length||0)+(s.reconciliations?.length||0)+(s.posCloses?.length||0)+(s.adjustments?.length||0)>0)}
+async function initialize(){try{const local=read(STORAGE_KEY),m=await master();if(!hasLocalData(local)){write(STORAGE_KEY,m.state);write(ACK_KEY,m.state);booting=false;location.reload();return}/* Dispositivo existente: conservar sus datos y convertir sólo diferencias positivas en eventos. */const localMoves=byId(local.moves),masterMoves=byId(m.state.moves);let ahead=false;for(const id of localMoves.keys())if(!masterMoves.has(id)){ahead=true;break}if(ahead){const e=makeEvent(m.state,local);await publish(e);const merged=applyEvent(m.state,e.data);write(STORAGE_KEY,merged);write(ACK_KEY,merged)}else{write(STORAGE_KEY,m.state);write(ACK_KEY,m.state)}}catch(e){console.warn('Panorama Finanzas: inicialización maestra pendiente',e)}finally{booting=false;window.dispatchEvent(new Event('panorama-finanzas-core-ready'))}}
+async function syncState(state){if(!valid(state))return {ok:false};write(STORAGE_KEY,state);if(booting||!navigator.onLine){schedule();return {ok:false,pending:true}}return flush()}
+async function flush(){if(booting||busy||!navigator.onLine)return {ok:false,pending:true};const current=read(STORAGE_KEY);if(!valid(current))return {ok:false};busy=true;try{const ack=read(ACK_KEY)||current,e=makeEvent(ack,current),d=e.data,empty=!Object.keys(d.upserts||{}).length&&!Object.keys(d.deletes||{}).length&&!Object.keys(d.accountDeltas||{}).length&&!Object.keys(d.scalars||{}).length;if(!empty)await publish(e);const m=await master();write(STORAGE_KEY,m.state);write(ACK_KEY,m.state);lastRemoteAt=new Date().toISOString();window.dispatchEvent(new CustomEvent('panorama-finanzas-sync',{detail:{status:'synced',master:true}}));return {ok:true,master:true}}catch(e){console.warn('Panorama Finanzas master sync pendiente',e);window.dispatchEvent(new CustomEvent('panorama-finanzas-sync',{detail:{status:'pending',error:e}}));return {ok:false,pending:true,error:e}}finally{busy=false}}
+async function remoteState(){const m=await master();return {data:m.state,updated_at:m.baseline?.updated_at||null}}
+function receiveEvent(event){if(!event||typeof event!=='object'||!event.type)return {accepted:false};window.dispatchEvent(new CustomEvent('panorama-finanzas-event',{detail:event}));return {accepted:true}}
+function publishEvent(event){if(!event||typeof event!=='object'||!event.type)return false;window.dispatchEvent(new CustomEvent('panorama-finanzas-published',{detail:event}));return true}
+function getSummary(){return {source:'finanzas',ready:true,updatedAt:lastRemoteAt||null,pending:false,indicators:{},alerts:[]}}
+function flatten(v){if(v==null)return '';if(Array.isArray(v))return v.map(flatten).join(', ');if(typeof v==='object')return Object.entries(v).map(([k,x])=>k+': '+flatten(x)).join(' | ');return v}
+function normalizeRows(rows){return (Array.isArray(rows)?rows:[]).map(r=>r&&typeof r==='object'&&!Array.isArray(r)?Object.fromEntries(Object.entries(r).map(([k,v])=>[k,flatten(v)])):{valor:flatten(r)})}
+function exportExcelBackup(){const s=read(STORAGE_KEY)||{};const stamp=new Date().toISOString().slice(0,10),sheets=[['Resumen',[{generado:new Date().toISOString(),movimientos:(s.moves||[]).length,cuentas:(s.accounts||[]).length}]],['Cuentas',s.accounts],['Movimientos',s.moves],['Proveedores',s.providers],['Pagos proveedores',s.providerPayments],['Compromisos',s.commitments],['Pagos compromisos',s.commitmentPayments],['Empleados nómina',s.payrollEmployees],['Periodos nómina',s.payrollPeriods],['Pagos fijos',s.fixedPayments],['Cortes',s.cuts],['Conciliaciones',s.reconciliations],['Cierres POS',s.posCloses],['Ajustes',s.adjustments]];const esc=v=>{const x=String(v??'');return /[",\n]/.test(x)?'"'+x.replace(/"/g,'""')+'"':x};const text='\uFEFF'+sheets.map(([n,r])=>{const a=normalizeRows(r),k=[...new Set(a.flatMap(x=>Object.keys(x)))];return '### '+n+'\n'+(k.length?k.join(',')+'\n'+a.map(x=>k.map(z=>esc(x[z])).join(',')).join('\n'):'Sin registros')}).join('\n\n');const b=new Blob([text],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='Panorama_Finanzas_'+stamp+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),0)}
+window.PanoramaCoreFinance={syncState,remoteState,receiveEvent,publishEvent,getSummary,exportExcelBackup,flush,employees:()=>request('employees?active=eq.true&select=id,full_name,personal_data&order=full_name.asc'),pending:()=>request('payroll_payment_requests?status=eq.PENDING_PAYMENT&select=*,employees(full_name)&order=requested_at.asc'),paymentHistory:()=>request('personal_payment_records?select=*&order=created_at.desc'),directPayments:()=>request('panorama_payroll_payments?select=*&order=paid_date.desc,created_at.desc'),debugStatus:()=>({busy,lastRemoteAt,online:navigator.onLine,device:device(),master:true})};
+window.addEventListener('online',()=>flush());document.addEventListener('visibilitychange',()=>{if(!document.hidden)flush()});setInterval(flush,4000);if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>initialize());else initialize();
 })();
