@@ -1,26 +1,65 @@
-/* Panorama Finanzas — contrato de integración */
+/* Panorama Finanzas — sincronización offline segura */
 (function(){
-  const cfg=window.PANORAMA_SUPABASE,ROW_ID='finanzas-main',PERSONAL_ROW_ID='personal-main',STORAGE_KEY='panorama_finanzas_pf_v1_010';
-  if(!cfg?.url||!cfg?.key){console.error('Panorama Finanzas: falta la configuración de Supabase.');return;}
-  const base=cfg.url+'/rest/v1/',headers={apikey:cfg.key,Authorization:'Bearer '+cfg.key,'Content-Type':'application/json'};
-  let busy=false,lastRemoteAt='';
-  const valid=v=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).length>0;
-  async function request(path,options={}){const r=await fetch(base+path,{...options,headers:{...headers,...(options.headers||{})}});const text=await r.text();if(!r.ok)throw new Error(text||r.statusText);return text?JSON.parse(text):null;}
-  async function syncState(state){if(busy||!valid(state))return {ok:false,skipped:true};busy=true;try{const r=await fetch(base+'panorama_finanzas_state?on_conflict=id',{method:'POST',headers:{...headers,Prefer:'resolution=merge-duplicates,return=representation'},body:JSON.stringify({id:ROW_ID,data:state})});const raw=await r.text();if(!r.ok)throw new Error(raw||r.statusText);const row=raw?JSON.parse(raw)[0]||null:null;lastRemoteAt=row?.updated_at||lastRemoteAt;return {ok:true,updatedAt:lastRemoteAt};}catch(error){console.warn('Panorama Finanzas: no se pudo sincronizar.',error);return {ok:false,error};}finally{busy=false;}}
-  function isPersonalMove(m){return m&&((m.linkedSource==='panorama-personal')||String(m.origin||'')==='panorama-personal'||(m.sourceRecordId&&m.personalPaymentId));}
-  async function getPersonalPayments(){const rows=await request('panorama_personal_state?id=eq.'+encodeURIComponent(PERSONAL_ROW_ID)+'&select=data');const data=Array.isArray(rows)?rows[0]?.data:null;const payments=Array.isArray(data?.payments)?data.payments:[];const employees=new Map((Array.isArray(data?.employees)?data.employees:[]).map(e=>[String(e.id),e]));return payments.filter(p=>p?.id).map(p=>({id:String(p.id),employee_id:p.employeeId!=null?String(p.employeeId):null,employee_name:String(employees.get(String(p.employeeId))?.name||p.employeeName||'Empleado'),amount:Number(p.amount||0),paid_date:String(p.paidDate||new Date().toISOString().slice(0,10)).slice(0,10),period_start:p.periodStart?String(p.periodStart).slice(0,10):null,period_end:p.periodEnd?String(p.periodEnd).slice(0,10):null,note:String(p.note||''),account:p.account?String(p.account):null})).filter(p=>p.employee_id&&Number.isFinite(p.amount)&&p.amount>=0);}
-  async function reconcilePersonalPayments(state){const activePayments=await getPersonalPayments();const activeIds=new Set(activePayments.map(p=>String(p.id)));state.moves=Array.isArray(state.moves)?state.moves:[];state.accounts=Array.isArray(state.accounts)?state.accounts:[];let changed=false,imported=[],removed=[],surviving=[];for(const m of state.moves){const sourceId=String(m.sourceRecordId||m.personalPaymentId||'');if(isPersonalMove(m)&&sourceId&&!activeIds.has(sourceId)){const accountId=m.account||m.from,account=state.accounts.find(a=>a.id===accountId);if(account)account.balance=Number(account.balance||0)+Number(m.amount||0);changed=true;removed.push(m);continue;}surviving.push(m);}state.moves=surviving;for(const p of activePayments){if(state.moves.find(m=>String(m.sourceRecordId||m.personalPaymentId||'')===String(p.id)))continue;const accountId=state.accounts.some(a=>a.id===p.account)?p.account:(state.accounts.some(a=>a.id==='principal')?'principal':state.accounts[0]?.id);if(!accountId)continue;const account=state.accounts.find(a=>a.id===accountId),amount=Number(p.amount||0);if(!Number.isFinite(amount)||amount<0)continue;const period=p.period_start&&p.period_end?(p.period_start+' al '+p.period_end):'';const move={id:'personal-'+p.id,to:null,from:accountId,date:p.paid_date,type:'salida',amount,origin:'panorama-personal',account:accountId,concept:'Nómina — '+(p.employee_name||'Empleado'),note:[p.note,period].filter(Boolean).join(' · '),category:'nomina',created:Date.now(),externalId:String(p.id),sourceRecordId:String(p.id),personalPaymentId:String(p.id),employeeId:p.employee_id||null,employeeName:p.employee_name||'Empleado',periodStart:p.period_start||null,periodEnd:p.period_end||null,linkedSource:'panorama-personal'};state.moves.push(move);account.balance=Number(account.balance||0)-amount;changed=true;imported.push(move);}if(changed)window.dispatchEvent(new CustomEvent('panorama-personal-payments-reconciled',{detail:{imported,removed,state}}));return changed;}
-  function refreshUiAfterImport(){try{if(typeof window.renderAll==='function')window.renderAll();}catch(e){console.warn('Panorama Finanzas: no se pudo actualizar la interfaz.',e);}window.dispatchEvent(new Event('panorama-finanzas-refresh'));}
-  async function remoteState(){const r=await fetch(base+'panorama_finanzas_state?id=eq.'+encodeURIComponent(ROW_ID)+'&select=data,updated_at',{headers});const raw=await r.text();if(!r.ok)throw new Error(raw||r.statusText);const row=raw?JSON.parse(raw)[0]||null:null;if(!row?.data)return row;const changed=await reconcilePersonalPayments(row.data);if(changed){const synced=await syncState(row.data);if(synced?.updatedAt)row.updated_at=synced.updatedAt;refreshUiAfterImport();}if(row?.updated_at)lastRemoteAt=row.updated_at;return row;}
-  function receiveEvent(event){if(!event||typeof event!=='object'||!event.type)return {accepted:false,reason:'invalid-event'};window.dispatchEvent(new CustomEvent('panorama-finanzas-event',{detail:event}));return {accepted:true};}
-  function publishEvent(event){if(!event||typeof event!=='object'||!event.type)return false;window.dispatchEvent(new CustomEvent('panorama-finanzas-published',{detail:event}));return true;}
-  function getSummary(){return {source:'finanzas',ready:true,updatedAt:lastRemoteAt||null,indicators:{},alerts:[]};}
-  function flatten(v){if(v===null||v===undefined)return '';if(Array.isArray(v))return v.map(flatten).join(', ');if(typeof v==='object')return Object.entries(v).map(([k,x])=>k+': '+flatten(x)).join(' | ');return v;}
-  function normalizeRows(rows){rows=Array.isArray(rows)?rows:[];return rows.map(r=>r&&typeof r==='object'&&!Array.isArray(r)?Object.fromEntries(Object.entries(r).map(([k,v])=>[k,flatten(v)])):{valor:flatten(r)});}
-  function csvEscape(v){const s=String(v??'');return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}
-  function downloadBlob(content,type,name){const blob=new Blob([content],{type}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},0);}
-  function exportExcelBackup(){let state={};try{state=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')||{};}catch(e){alert('No se pudo leer el estado financiero para exportarlo.');return;}const generated=new Date().toISOString(),stamp=generated.slice(0,10);const summary=[{generado:generated,version:'PF-V1-041',movimientos:(state.moves||[]).length,cuentas:(state.accounts||[]).length,proveedores:(state.providers||[]).length,empleados:(state.payrollEmployees||[]).length,periodos_nomina:(state.payrollPeriods||[]).length}];const sheets=[['Resumen',summary],['Cuentas',state.accounts],['Movimientos',state.moves],['Proveedores',state.providers],['Pagos proveedores',state.providerPayments],['Compromisos',state.commitments],['Pagos compromisos',state.commitmentPayments],['Empleados nómina',state.payrollEmployees],['Periodos nómina',state.payrollPeriods],['Pagos fijos',state.fixedPayments],['Cortes',state.cuts],['Conciliaciones',state.reconciliations],['Cierres POS',state.posCloses],['Ajustes',state.adjustments],['Loyverse resumen',state.loyverseSummaries],['Loyverse tesorería',state.loyverseTreasuryExpenses],['Categorías entrada',state.categories?.entrada],['Categorías salida',state.categories?.salida],['Categorías compromisos',state.categories?.compromiso]];const blocks=sheets.map(([name,rows])=>{const data=normalizeRows(rows),keys=[...new Set(data.flatMap(r=>Object.keys(r)))];return '### '+name+'\n'+(keys.length?keys.join(',')+'\n'+data.map(r=>keys.map(k=>csvEscape(r[k])).join(',')).join('\n'):'Sin registros')}).join('\n\n');downloadBlob('\uFEFF'+blocks,'text/csv;charset=utf-8','Panorama_Finanzas_'+stamp+'.csv');}
-  function installExcelExport(){const anchor=document.getElementById('btnExportData');if(!anchor||document.getElementById('btnExportExcel'))return;const btn=document.createElement('button');btn.type='button';btn.className='btn';btn.id='btnExportExcel';btn.textContent='⇩ Exportar datos (Excel)';btn.title='Exporta los datos financieros en un formato legible por Excel';btn.addEventListener('click',exportExcelBackup);anchor.insertAdjacentElement('afterend',btn);}
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',installExcelExport);else installExcelExport();
-  window.PanoramaCoreFinance={syncState,remoteState,receiveEvent,publishEvent,getSummary,exportExcelBackup,employees:()=>request('employees?active=eq.true&select=id,full_name,personal_data&order=full_name.asc'),pending:()=>request('payroll_payment_requests?status=eq.PENDING_PAYMENT&select=*,employees(full_name)&order=requested_at.asc'),paymentHistory:()=>request('personal_payment_records?select=*&order=created_at.desc'),directPayments:()=>request('panorama_payroll_payments?select=*&order=paid_date.desc,created_at.desc'),confirm(requestRow,movementId,accountId,_paidAt,notes=''){if(!requestRow||requestRow.status!=='PENDING_PAYMENT')throw new Error('La solicitud ya no está pendiente.');return request('rpc/confirm_payroll_payment',{method:'POST',body:JSON.stringify({p_payment_request_id:requestRow.id,p_financial_movement_id:String(movementId),p_financial_account_id:String(accountId),p_amount:Number(requestRow.amount),p_notes:notes})});},debugStatus:()=>({busy,lastRemoteAt,rowId:ROW_ID,url:base})};window.dispatchEvent(new Event('panorama-core-finance-ready'));
+'use strict';
+const cfg=window.PANORAMA_SUPABASE,ROW_ID='finanzas-main',PERSONAL_ROW_ID='personal-main';
+const STORAGE_KEY='panorama_finanzas_pf_v1_010',QUEUE_KEY='panorama_finanzas_pending_v2';
+if(!cfg?.url||!cfg?.key)return;
+const base=cfg.url+'/rest/v1/',headers={apikey:cfg.key,Authorization:'Bearer '+cfg.key,'Content-Type':'application/json'};
+let busy=false,lastRemoteAt='',retryTimer=null;
+const clone=x=>x==null?x:JSON.parse(JSON.stringify(x));
+const valid=x=>x&&typeof x==='object'&&!Array.isArray(x)&&Object.keys(x).length>0;
+const read=k=>{try{return JSON.parse(localStorage.getItem(k)||'null')}catch{return null}};
+const write=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+function queue(state){if(valid(state))write(QUEUE_KEY,clone(state));}
+function pending(){return read(QUEUE_KEY);}
+function schedule(){clearTimeout(retryTimer);retryTimer=setTimeout(flush,300);}
+async function request(path,options={}){const r=await fetch(base+path,{...options,headers:{...headers,...(options.headers||{})},cache:'no-store'});const t=await r.text();if(!r.ok)throw new Error(t||r.statusText);return t?JSON.parse(t):null;}
+async function put(state){const r=await fetch(base+'panorama_finanzas_state?on_conflict=id',{method:'POST',headers:{...headers,Prefer:'resolution=merge-duplicates,return=representation'},body:JSON.stringify({id:ROW_ID,data:state,updated_at:new Date().toISOString()})});const t=await r.text();if(!r.ok)throw new Error(t||r.statusText);return t?JSON.parse(t)[0]||null:null;}
+async function syncState(state){
+ if(!valid(state))return {ok:false,skipped:true};
+ /* Siempre se encola ANTES de intentar Internet. Así un dato offline nunca puede perderse. */
+ queue(state);
+ if(!navigator.onLine){schedule();return {ok:false,pending:true,offline:true};}
+ return flush();
+}
+async function flush(){
+ if(busy||!navigator.onLine)return {ok:false,pending:!!pending()};
+ const state=pending();if(!valid(state))return {ok:true,skipped:true};
+ busy=true;
+ try{
+   const row=await put(state);
+   lastRemoteAt=row?.updated_at||new Date().toISOString();
+   /* Sólo borramos la cola después de una respuesta correcta del servidor. */
+   localStorage.removeItem(QUEUE_KEY);
+   if(row?.data)write(STORAGE_KEY,row.data);
+   window.dispatchEvent(new CustomEvent('panorama-finanzas-sync',{detail:{status:'synced',updatedAt:lastRemoteAt}}));
+   return {ok:true,updatedAt:lastRemoteAt};
+ }catch(error){
+   console.warn('Panorama Finanzas: sincronización pendiente.',error);
+   window.dispatchEvent(new CustomEvent('panorama-finanzas-sync',{detail:{status:'pending',error}}));
+   return {ok:false,pending:true,error};
+ }finally{busy=false;}
+}
+async function remoteState(){
+ /* Si existe una operación offline, primero se publica. Nunca se descarga encima de ella. */
+ if(valid(pending()))await flush();
+ const rows=await request('panorama_finanzas_state?id=eq.'+encodeURIComponent(ROW_ID)+'&select=data,updated_at');
+ const row=Array.isArray(rows)?rows[0]||null:null;
+ if(row?.updated_at)lastRemoteAt=row.updated_at;
+ return row;
+}
+function isPersonalMove(m){return m&&((m.linkedSource==='panorama-personal')||String(m.origin||'')==='panorama-personal'||(m.sourceRecordId&&m.personalPaymentId));}
+async function getPersonalPayments(){const rows=await request('panorama_personal_state?id=eq.'+encodeURIComponent(PERSONAL_ROW_ID)+'&select=data');const d=Array.isArray(rows)?rows[0]?.data:null;const em=new Map((d?.employees||[]).map(e=>[String(e.id),e]));return (d?.payments||[]).filter(p=>p?.id).map(p=>({id:String(p.id),employee_id:p.employeeId!=null?String(p.employeeId):null,employee_name:String(em.get(String(p.employeeId))?.name||p.employeeName||'Empleado'),amount:Number(p.amount||0),paid_date:String(p.paidDate||new Date().toISOString().slice(0,10)).slice(0,10),period_start:p.periodStart||null,period_end:p.periodEnd||null,note:String(p.note||''),account:p.account||null})).filter(p=>p.employee_id&&Number.isFinite(p.amount)&&p.amount>=0);}
+function receiveEvent(event){if(!event||typeof event!=='object'||!event.type)return {accepted:false};window.dispatchEvent(new CustomEvent('panorama-finanzas-event',{detail:event}));return {accepted:true};}
+function publishEvent(event){if(!event||typeof event!=='object'||!event.type)return false;window.dispatchEvent(new CustomEvent('panorama-finanzas-published',{detail:event}));return true;}
+function getSummary(){return {source:'finanzas',ready:true,updatedAt:lastRemoteAt||null,pending:!!pending(),indicators:{},alerts:[]};}
+function flatten(v){if(v==null)return '';if(Array.isArray(v))return v.map(flatten).join(', ');if(typeof v==='object')return Object.entries(v).map(([k,x])=>k+': '+flatten(x)).join(' | ');return v;}
+function normalizeRows(rows){return (Array.isArray(rows)?rows:[]).map(r=>r&&typeof r==='object'&&!Array.isArray(r)?Object.fromEntries(Object.entries(r).map(([k,v])=>[k,flatten(v)])):{valor:flatten(r)});}
+function exportExcelBackup(){let s=read(STORAGE_KEY)||{};const stamp=new Date().toISOString().slice(0,10),sheets=[['Resumen',[{generado:new Date().toISOString(),movimientos:(s.moves||[]).length,cuentas:(s.accounts||[]).length}]],['Cuentas',s.accounts],['Movimientos',s.moves],['Proveedores',s.providers],['Pagos proveedores',s.providerPayments],['Compromisos',s.commitments],['Pagos compromisos',s.commitmentPayments],['Empleados nómina',s.payrollEmployees],['Periodos nómina',s.payrollPeriods],['Pagos fijos',s.fixedPayments],['Cortes',s.cuts],['Conciliaciones',s.reconciliations],['Cierres POS',s.posCloses],['Ajustes',s.adjustments]];const esc=v=>{const x=String(v??'');return /[",\n]/.test(x)?'"'+x.replace(/"/g,'""')+'"':x};const text='\uFEFF'+sheets.map(([n,r])=>{const a=normalizeRows(r),k=[...new Set(a.flatMap(x=>Object.keys(x)))];return '### '+n+'\n'+(k.length?k.join(',')+'\n'+a.map(x=>k.map(z=>esc(x[z])).join(',')).join('\n'):'Sin registros')}).join('\n\n');const b=new Blob([text],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='Panorama_Finanzas_'+stamp+'.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),0);}
+function installExcelExport(){const anchor=document.getElementById('btnExportData');if(!anchor||document.getElementById('btnExportExcel'))return;const b=document.createElement('button');b.type='button';b.className='btn';b.id='btnExportExcel';b.textContent='⇩ Exportar datos (Excel)';b.onclick=exportExcelBackup;anchor.insertAdjacentElement('afterend',b);}
+window.PanoramaCoreFinance={syncState,remoteState,receiveEvent,publishEvent,getSummary,exportExcelBackup,flush,employees:()=>request('employees?active=eq.true&select=id,full_name,personal_data&order=full_name.asc'),pending:()=>request('payroll_payment_requests?status=eq.PENDING_PAYMENT&select=*,employees(full_name)&order=requested_at.asc'),paymentHistory:()=>request('personal_payment_records?select=*&order=created_at.desc'),directPayments:()=>request('panorama_payroll_payments?select=*&order=paid_date.desc,created_at.desc'),debugStatus:()=>({busy,lastRemoteAt,pending:!!pending(),online:navigator.onLine,rowId:ROW_ID})};
+window.addEventListener('online',()=>flush());document.addEventListener('visibilitychange',()=>{if(!document.hidden)flush()});setInterval(()=>flush(),4000);
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',installExcelExport);else installExcelExport();
+window.dispatchEvent(new Event('panorama-core-finance-ready'));
+flush();
 })();
