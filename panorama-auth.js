@@ -1,16 +1,9 @@
-/* Panorama Core direct access mode — no email login required */
+/* Panorama Core direct access mode + isolated Personal payment importer */
 (function(){
   const cfg=window.PANORAMA_SUPABASE;
-  const headers=()=>({
-    apikey:cfg?.key||'',
-    Authorization:cfg?.key?'Bearer '+cfg.key:'',
-    'Content-Type':'application/json'
-  });
-  const ready=Promise.resolve(null);
-  function signOut(){ /* Direct-access mode: no session to close. */ }
-  async function requestAccess(){ return {direct_access:true}; }
-  function removeLegacyGate(){ document.getElementById('panoramaAuthGate')?.remove(); }
-  window.addEventListener('DOMContentLoaded',removeLegacyGate,{once:true});
-  if(document.readyState!=='loading') removeLegacyGate();
-  window.PanoramaAuth={ready,headers,get session(){return null},signOut,requestAccess,directAccess:true};
+  const headers=()=>({apikey:cfg?.key||'',Authorization:cfg?.key?'Bearer '+cfg.key:'','Content-Type':'application/json'});
+  const ready=Promise.resolve(null);function signOut(){}async function requestAccess(){return {direct_access:true}}function removeLegacyGate(){document.getElementById('panoramaAuthGate')?.remove()}window.addEventListener('DOMContentLoaded',removeLegacyGate,{once:true});if(document.readyState!=='loading')removeLegacyGate();window.PanoramaAuth={ready,headers,get session(){return null},signOut,requestAccess,directAccess:true};
+  let busy=false;
+  async function importPersonalPayments(){if(busy||!navigator.onLine||!cfg?.url||!cfg?.key||!window.PanoramaCoreFinance)return;busy=true;try{const h=headers();const [payments,stateRow]=await Promise.all([fetch(cfg.url+'/rest/v1/panorama_payroll_payments?source=eq.personal&select=*&order=created_at.asc',{headers:h}).then(r=>r.ok?r.json():[]),window.PanoramaCoreFinance.remoteState()]);if(!payments.length)return;const state=stateRow?.data;if(!state||!Array.isArray(state.moves))return;const ids=new Set(state.moves.map(m=>String(m.id)));let changed=false;for(const p of payments){const id='personal-'+p.id;if(ids.has(id))continue;state.moves.unshift({id,date:p.paid_date,type:'salida',concept:'Nómina — '+(p.employee_name||'Personal'),category:'nomina',amount:Number(p.amount||0),source:'personal',personalPaymentId:String(p.id),employeeId:p.employee_id,periodStart:p.period_start,periodEnd:p.period_end,note:p.note||''});changed=true}if(changed){window.PanoramaCoreFinance.syncState(state);window.PanoramaCoreFinance.sync()}}catch(e){console.warn('No se pudieron importar pagos de Personal',e)}finally{busy=false}}
+  setTimeout(importPersonalPayments,1500);setInterval(importPersonalPayments,1500);window.addEventListener('online',importPersonalPayments);
 })();
