@@ -267,12 +267,10 @@ test('regresión: operaciones de proveedores usan RPC transaccional',()=>{
   assert.match(app,/PanoramaFinanceLedger\.reverseProviderPayment/);
   assert.match(app,/Las compras de proveedor registradas en el libro financiero son inmutables/);
 });
-test('regresión: compras de proveedor del ledger no se editan directamente',()=>{
-  const start=app.indexOf('function editProviderPurchase');
-  const end=app.indexOf('\nasync function deleteProviderPurchase',start);
-  const block=app.slice(start,end);
-  assert.match(block,/linkedMove\?\.ledgerEntryId/);
-  assert.match(block,/reviértela y registra una nueva/);
+test('regresión: compras de proveedor del ledger usan reversión, no edición directa',()=>{
+  assert.doesNotMatch(app,/function editProviderPurchase\(/);
+  assert.match(app,/PanoramaFinanceLedger\.reverseProviderPurchase/);
+  assert.match(app,/reviértela y registra una nueva/);
 });
 
 test('regresión: el adaptador expone el ciclo transaccional de proveedores',()=>{
