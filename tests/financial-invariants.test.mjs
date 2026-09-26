@@ -316,8 +316,6 @@ test('regresión: el Cierre POS sólo muta saldos locales después de confirmar 
   assert.ok(block.indexOf('await window.PanoramaFinanceLedger.transfer') < block.indexOf('pos.balance-=withdrawal'));
 });
 
-import { test } from 'node:test';
-import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 test('sintaxis: app.js debe compilar como JavaScript válido',()=>{
   execFileSync(process.execPath,['--check','js/app.js'],{stdio:'pipe'});
