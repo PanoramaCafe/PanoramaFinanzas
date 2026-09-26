@@ -109,10 +109,10 @@ revoke all on private.finance_audit_log from anon, authenticated;
 
 -- Seed the current JSONB state without changing it.
 insert into private.finance_accounts
-(id,name,account_type,kind,active,current_balance,source_state_id)
+(id,name,account_type,kind,active,opening_balance,current_balance,source_state_id)
 select a->>'id', coalesce(a->>'name',a->>'id'), coalesce(a->>'type','Cuenta'),
        a->>'kind', coalesce((a->>'active')::boolean,true),
-       coalesce((a->>'balance')::numeric,0), 'finanzas-main'
+       coalesce((a->>'balance')::numeric,0), coalesce((a->>'balance')::numeric,0), 'finanzas-main'
 from public.panorama_finanzas_state s
 cross join lateral jsonb_array_elements(coalesce(s.data->'accounts','[]'::jsonb)) a
 where s.id='finanzas-main'
