@@ -190,7 +190,7 @@ test('regresión: eliminación de movimiento ledger usa reversión atómica',()=
 });
 test('regresión: adaptador expone reversión',()=>{
   assert.match(ledger,/async function reverse/);
-  assert.match(ledger,/window\.PanoramaFinanceLedger=\{postEntry,transfer,reverse\}/);
+  assert.match(ledger,/window\.PanoramaFinanceLedger=\{postEntry,transfer,reverse,adjustBalance\}/);
 });
 
 
