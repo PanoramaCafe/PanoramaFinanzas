@@ -182,7 +182,7 @@ test('regresión: movimientos no ledger no se editan directamente',()=>{
   const end=app.indexOf('function deleteMovement',start);
   const block=app.slice(start,end);
   assert.match(block,/m\.ledgerEntryId/);
-  assert.match(block,/no está vinculado al libro financiero/);
+  assert.match(block,/estado legacy/);
 });
 test('regresión: movimientos con ledger no se editan directamente',()=>{
   const start=app.indexOf('function editMovement');
