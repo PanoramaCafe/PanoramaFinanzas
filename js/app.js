@@ -285,7 +285,9 @@ function renderCorePayrollRequests(){
  if(corePayrollLoading){box.innerHTML='<div class="empty">Cargando solicitudes…</div>';return}
  if(!window.PanoramaCoreFinance){box.innerHTML='<div class="empty">La conexión con Panorama Core no está disponible.</div>';return}
  if(!corePayrollRequests.length){box.innerHTML='<div class="empty">No hay solicitudes de nómina pendientes.</div>';return}
- box.innerHTML='<div class="tableWrap"><table class="table"><thead><tr><th>Periodo</th><th>Empleado</th><th>Importe</th><th></th></tr></thead><tbody>'+corePayrollRequests.map(r=>'<tr><td>'+esc(r.period_start)+' – '+esc(r.period_end)+'</td><td><b>'+esc(r.employees?.full_name||'Empleado')+'</b></td><td>'+money(r.amount)+'</td><td><button class="btn primary" data-pay-core-request="'+esc(r.id)+'">Pagar</button></td></tr>').join('')+'</tbody></table></div>';
+ const canConfirm=typeof window.PanoramaCoreFinance.confirm==='function';
+ box.innerHTML='<div class="tableWrap"><table class="table"><thead><tr><th>Periodo</th><th>Empleado</th><th>Importe</th><th></th></tr></thead><tbody>'+corePayrollRequests.map(r=>'<tr><td>'+esc(r.period_start)+' – '+esc(r.period_end)+'</td><td><b>'+esc(r.employees?.full_name||'Empleado')+'</b></td><td>'+money(r.amount)+'</td><td><button class="btn primary" data-pay-core-request="'+esc(r.id)+'" '+(canConfirm?'':'disabled title="La confirmación de pago de Panorama Core aún no está conectada"')+'>'+(canConfirm?'Pagar':'No disponible')+'</button></td></tr>').join('')+'</tbody></table></div>';
+ if(!canConfirm)box.insertAdjacentHTML('afterbegin','<div class="notice">Hay solicitudes pendientes, pero la confirmación transaccional con Panorama Core no está conectada en esta versión. El botón de pago permanece bloqueado para evitar descontar saldo local sin confirmar el pago en Core.</div>');
  document.querySelectorAll('[data-pay-core-request]').forEach(b=>b.addEventListener('click',()=>openCorePayrollPayment(b.dataset.payCoreRequest)));
 }
 async function refreshCorePayrollRequests(){
