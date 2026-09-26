@@ -1057,7 +1057,8 @@ function importLoyverseTreasuryExpense(data){
  if(db.loyverseTreasuryExpenses.some(x=>String(x.externalId)===id))return {ok:false,duplicate:true};
  const amount=Number(data.amount||0); if(!Number.isFinite(amount)||amount<=0)return {ok:false,error:'Importe inválido.'};
  const acc=getAccount(String(data.accountId||''));
- if(acc&&Number(acc.balance)<amount)return {ok:false,error:'La cuenta seleccionada no tiene saldo suficiente.'};
+ if(!acc)return {ok:false,error:'Una salida financiera de Loyverse requiere una cuenta válida.'};
+ if(Number(acc.balance)<amount)return {ok:false,error:'La cuenta seleccionada no tiene saldo suficiente.'};
  const rec={id:uid(),externalId:id,source:'loyverse_treasury',date:String(data.date||today()),amount,concept:String(data.concept||data.name||'Salida de tesorería Loyverse'),category:String(data.category||'tesoreria_loyverse'),note:String(data.note||''),accountId:acc?acc.id:null,created:Date.now()};
  db.loyverseTreasuryExpenses.push(rec);
  if(acc){
