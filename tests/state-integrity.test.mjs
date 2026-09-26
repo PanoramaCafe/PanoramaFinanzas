@@ -106,5 +106,5 @@ test('integridad permite saldos negativos en cuentas digitales declaradas como C
 });
 
 
-test('la lectura de nube usa RPC autorizado',()=>{assert.match(core,/rpc\\/get_panorama_finanzas_state/);assert.doesNotMatch(core,/panorama_finanzas_state\\?id=eq\\./);});
+test('la lectura de nube usa RPC autorizado',()=>{assert.ok(core.includes('rpc/get_panorama_finanzas_state'));assert.ok(!core.includes('panorama_finanzas_state?id=eq.'));});
 test('la UI expone estados de sesión y acceso',()=>{assert.match(app,/Sesión requerida/);assert.match(app,/Sin acceso a finanzas/);});
