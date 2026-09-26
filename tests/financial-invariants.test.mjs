@@ -224,6 +224,19 @@ test('regresión: pago de nómina core conserva referencia al ledger',()=>{
   const end=app.indexOf("window.addEventListener('panorama-core-finance-ready'",start);
   assert.match(app.slice(start,end),/ledgerEntryId:movementId/);
 });
+test('regresión: pagos de proveedor o compromiso ya contabilizados no se editan directamente',()=>{
+  const start=app.indexOf('function editPayment');
+  const end=app.indexOf('\nasync function deletePayment',start);
+  const block=app.slice(start,end);
+  assert.match(block,/p\.ledgerEntryId/);
+  assert.match(block,/rev\u00e9rtelo y registra uno nuevo/);
+});
+test('regresión: proveedores y compromisos con operaciones financieras no se eliminan directamente',()=>{
+  assert.match(app,/function deleteProvider\(i\).*hasPurchases/);
+  assert.match(app,/function deleteCommitment\(i\).*hasPayments/);
+  assert.match(app,/No puede eliminarse directamente/);
+});
+
 test('regresión: operaciones de proveedores usan RPC transaccional',()=>{
   assert.match(app,/PanoramaFinanceLedger\.postProviderPurchase/);
   assert.match(app,/PanoramaFinanceLedger\.postProviderPayment/);
