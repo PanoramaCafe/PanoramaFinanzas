@@ -80,13 +80,13 @@ test('merge de cuentas nuevas conserva su saldo',()=>{
   const start=core.indexOf('function accountChanges');
   const end=core.indexOf('function merge',start);
   const block=core.slice(start,end);
-  assert.match(block,/if\\(!old\\)\\{meta\\[id\\]=clone\\(v\\);continue\\}/);
+  assert.ok(block.includes('if(!old){meta[id]=clone(v);continue}'));
 });
 
 test('merge de cuentas eliminadas elimina el registro remoto',()=>{
-  assert.match(core,/for\\(const id of ac\\.deleted\\)am\\.delete\\(id\\)/);
+  assert.ok(core.includes('for(const id of ac.deleted)am.delete(id)'));
 });
 
 test('eventos de integración participan en el merge como colección',()=>{
-  assert.match(core,/loyverseTreasuryExpenses','integrationEvents/);
+  assert.ok(core.includes("loyverseTreasuryExpenses','integrationEvents"));
 });
