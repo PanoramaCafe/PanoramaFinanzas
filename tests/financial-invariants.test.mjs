@@ -205,3 +205,18 @@ test('regresión: el saldo de una cuenta existente no se edita directamente',()=
   assert.match(app,/existing\?'disabled':''/);
   assert.doesNotMatch(app,/existing\.balance=balance/);
 });
+
+
+test('regresión: operaciones de proveedores usan RPC transaccional',()=>{
+  assert.match(app,/PanoramaFinanceLedger\.postProviderPurchase/);
+  assert.match(app,/PanoramaFinanceLedger\.postProviderPayment/);
+  assert.match(app,/PanoramaFinanceLedger\.reverseProviderPurchase/);
+  assert.match(app,/PanoramaFinanceLedger\.reverseProviderPayment/);
+  assert.match(app,/Las compras de proveedor registradas en el libro financiero son inmutables/);
+});
+test('regresión: el adaptador expone el ciclo transaccional de proveedores',()=>{
+  assert.match(ledger,/postProviderPurchase/);
+  assert.match(ledger,/postProviderPayment/);
+  assert.match(ledger,/reverseProviderPurchase/);
+  assert.match(ledger,/reverseProviderPayment/);
+});
