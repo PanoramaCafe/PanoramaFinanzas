@@ -175,8 +175,12 @@ test('regresión: movimientos manuales nuevos usan el ledger transaccional',()=>
   assert.match(app,/ledgerEntryId:id/);
   assert.match(app,/PanoramaFinanceLedger\.transfer/);
 });
-test('regresión: movimientos del ledger no se editan directamente',()=>{
-  assert.match(app,/if\(m\.ledgerEntryId\)\{alert\('Este movimiento ya pertenece al libro financiero/);
+test('regresión: movimientos no ledger no se editan directamente',()=>{
+  const start=app.indexOf('function editMovement');
+  const end=app.indexOf('function deleteMovement',start);
+  const block=app.slice(start,end);
+  assert.match(block,/!m\.ledgerEntryId/);
+  assert.match(block,/no está vinculado al libro financiero/);
 });
 test('regresión: movimientos legacy sin ledger no pueden eliminarse directamente',()=>{
   const start=app.indexOf('async function deleteMovement');
