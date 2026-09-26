@@ -1,1 +1,1 @@
--- Transactional commitments ledger
+create table if not exists private.finance_commitments(id text primary key,name text not null,total numeric(14,2) not null check(total>0),paid_amount numeric(14,2) not null default 0 check(paid_amount>=0 and paid_amount<=total),active boolean not null default true);
