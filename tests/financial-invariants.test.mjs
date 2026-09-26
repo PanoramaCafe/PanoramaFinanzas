@@ -389,3 +389,9 @@ test('movimientos manuales validan el estado antes del ledger y revierten si fal
   assert.match(app,/Se detuvo antes de tocar el libro financiero/);
   assert.match(app,/Rollback: fallo al guardar estado compatible/);
 });
+
+test('movimientos independientes pueden guardar validando sólo sus cuentas afectadas',()=>{
+  assert.match(app,/function save\(options=\{\}\)/);
+  assert.match(app,/save\(\{accountIds:\[from\.id,to\.id\]\}\)/);
+  assert.match(app,/save\(\{accountIds:\[acc\.id\]\}\)/);
+});
