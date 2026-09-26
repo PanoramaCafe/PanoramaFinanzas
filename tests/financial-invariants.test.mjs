@@ -146,6 +146,18 @@ test('regresión: las transferencias no se editan parcialmente', () => {
   assert.match(block, /Las transferencias no se editan directamente/);
 });
 
+test('regresión: pagos externos de nómina requieren referencia y no se duplican', () => {
+  assert.match(app, /origin==='external'&&\!externalId/);
+  assert.match(app, /db\.payrollPeriods\.some\(x=>String\(x\.externalId\|\|''\)===externalId\)/);
+});
+
+test('regresión: eventos financieros externos con el mismo ID no se procesan dos veces', () => {
+  const start = app.indexOf('function applyExternalFinancialEvent');
+  const end = app.indexOf('\nfunction openAccount', start);
+  const block = app.slice(start, end);
+  assert.match(block, /db\.moves\.some\(m=>String\(m\.origin\|\|'\'\)===source&&String\(m\.externalId\|\|'\'\)===externalId\)/);
+});
+
 test('regresión: respaldo JSON sigue separado de exportación XLSX', () => {
   assert.match(app, /getElementById\('btnExportData'\)\.addEventListener\('click',exportData\)/);
   assert.match(app, /a\.download='Panorama_Finanzas_Backup_/);
