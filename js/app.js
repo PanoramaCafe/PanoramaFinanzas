@@ -564,52 +564,6 @@ function openMovement(type){
   }catch(err){console.error(err);alert('No se pudo registrar el movimiento en el libro financiero.\n\n'+err.message)}
  });
 }
-function registerIntegrationEvent(payload){
- const p=payload||{},externalId=String(p.externalId||'').trim(),source=String(p.source||'external');
- db.integrationEvents=db.integrationEvents||[];
- if(externalId){
-  const existing=db.integrationEvents.find(x=>String(x.source||'')===source&&String(x.externalId||'')===externalId);
-  if(existing)return existing.id;
-  if(db.moves.some(x=>String(x.origin||'')===source&&String(x.externalId||'')===externalId))throw new Error('El movimiento externo ya fue registrado.');
- }
- const event={
-  id:p.id||uid(),
-  source,
-  type:p.type||'financial_event',
-  externalId,
-  date:p.date||today(),
-  amount:Number(p.amount||0),
-  accountId:p.accountId||null,
-  concept:p.concept||'Movimiento externo',
-  metadata:p.metadata||{},
-  created:Date.now()
- };
- db.integrationEvents=db.integrationEvents||[];
- db.integrationEvents.push(event);
- return event.id;
-}
-function applyExternalFinancialEvent(payload){
- const p=payload||{},source=p.source||'external',acc=getAccount(p.accountId);
- if(!acc)throw new Error('Cuenta no encontrada');
- const amount=Number(p.amount||0);
- if(amount<=0)throw new Error('Importe inválido');
- const direction=p.direction||'out';
- const externalId=String(p.externalId||'').trim();
- if(externalId&&db.moves.some(m=>String(m.origin||'')===source&&String(m.externalId||'')===externalId))throw new Error('Este movimiento externo ya fue registrado.');
- if(direction==='out'&&acc.balance<amount)throw new Error('Saldo insuficiente');
- const id=registerIntegrationEvent(p);
- if(direction==='out')acc.balance-=amount;
- else acc.balance+=amount;
- db.moves.push({
-  id:uid(),created:Date.now(),origin:source,externalId:p.externalId||id,
-  type:direction==='out'?'salida':'entrada',date:p.date||today(),
-  amount,concept:p.concept||'Movimiento externo',category:p.category||source,
-  from:direction==='out'?acc.id:null,to:direction==='out'?null:acc.id,
-  account:acc.id,note:p.note||'',integrationEventId:id
- });
- save();
- return id;
-}
 function openAccount(editId){
  const existing=editId?getAccount(editId):null;
  openModal('<h2>'+ (existing?'Editar cuenta':'Nueva cuenta') +'</h2>'+
@@ -1082,16 +1036,6 @@ function openCategory(type,editId){
 function toggleCategory(type,i){const c=getCategory(type,i);if(c){c.active=!c.active;save()}}
 function deleteProvider(i){const p=db.providers.find(x=>x.id===i);if(!p)return;const hasPurchases=(db.providerPurchases||[]).some(x=>x.providerId===i)|| (db.moves||[]).some(x=>x.linkedType==='providerPurchase'&&x.linkedId===i);const hasPayments=(db.providerPayments||[]).some(x=>x.providerId===i)|| (db.moves||[]).some(x=>x.linkedType==='provider'&&x.linkedId===i);if(hasPurchases||hasPayments||Number(p.creditBalance||0)>0){alert('Este proveedor tiene operaciones financieras o saldo pendiente. No puede eliminarse directamente. Revierte/normaliza sus operaciones y después podrás retirarlo.');return}if(confirm('¿Eliminar proveedor?')){db.providers=db.providers.filter(x=>x.id!==i);save()}}
 function deleteCommitment(i){const c=db.commitments.find(x=>x.id===i);if(!c)return;const hasPayments=(db.commitmentPayments||[]).some(x=>x.commitmentId===i)|| (db.moves||[]).some(x=>x.linkedType==='commitment'&&x.linkedId===i);if(hasPayments||Number(c.paid||0)>0||c.ledgerCommitmentId){alert('Este compromiso está registrado en el libro financiero o tiene pagos. No puede eliminarse directamente. Reviértelo/archívalo desde su flujo financiero.');return}if(confirm('¿Eliminar compromiso?')){db.commitments=db.commitments.filter(x=>x.id!==i);save()}}
-function deleteMove(i){
- const m=db.moves.find(x=>x.id===i);if(!m)return;
- if(!confirm('¿Eliminar este movimiento? El saldo será revertido.'))return;
- const from=getAccount(m.from||m.account);
- if(m.type==='entrada'&&from)from.balance-=Number(m.amount);
- if(m.type==='salida'&&from)from.balance+=Number(m.amount);
- if(m.type==='transferencia'){if(from)from.balance+=Number(m.amount);const to=getAccount(m.to);if(to)to.balance-=Number(m.amount)}
- db.moves=db.moves.filter(x=>x.id!==i);save();
-}
-
 function resultRange(){
  const t=document.getElementById('resultPeriod')?.value||'month',d=new Date(today()+'T12:00:00');
  let from=document.getElementById('resultFrom')?.value||today(),to=document.getElementById('resultTo')?.value||today();
@@ -1268,49 +1212,8 @@ document.addEventListener('submit',function(ev){
   if(emp){emp.name=name;emp.defaultPay=pay;emp.active=true}else db.payrollEmployees.push({id:uid(),name,defaultPay:pay,active:true});
   save();renderPayroll();closeModal();return;
  }
- if(form.id==='fixedPaymentForm'){
-  ev.preventDefault();
-  const d=new FormData(form),concept=String(d.get('concept')||'').trim(),amount=Number(d.get('amount')),date=String(d.get('date')||''),status=String(d.get('status')||'pendiente'),note=String(d.get('note')||'').trim(),accountId=String(d.get('account')||''),acc=getAccount(accountId);
-  if(!concept){alert('Escribe el concepto.');return}
-  if(!Number.isFinite(amount)||amount<=0){alert('El importe no es válido.');return}
-  if(!date){alert('Selecciona una fecha.');return}
-  db.fixedPayments=db.fixedPayments||[];
-  const x=form.dataset.fixedId?db.fixedPayments.find(a=>a.id===form.dataset.fixedId):null;
-
-  if(x){
-   const wasPaid=x.status==='pagado';
-   const oldAmount=Number(x.amount||0);
-   const oldAcc=getAccount(x.accountId);
-
-   // Revert the existing paid effect before applying the new state.
-   if(wasPaid){
-     if(oldAcc)oldAcc.balance+=oldAmount;
-     db.moves=db.moves.filter(m=>!(m.sourceRecordId===x.id&&m.origin==='pagos_fijos'));
-   }
-
-   if(status==='pagado'){
-     if(!acc||Number(acc.balance)<amount){
-       if(wasPaid&&oldAcc){
-         oldAcc.balance-=oldAmount;
-         db.moves.push({id:uid(),created:Date.now(),origin:'pagos_fijos',sourceRecordId:x.id,type:'salida',date:x.date,amount:oldAmount,concept:x.concept,category:'pagos_fijos',from:oldAcc.id,to:null,account:oldAcc.id,note:x.note||''});
-       }
-       alert('Selecciona una cuenta con saldo suficiente.');return;
-     }
-     acc.balance-=amount;
-     db.moves.push({id:uid(),created:Date.now(),origin:'pagos_fijos',sourceRecordId:x.id,type:'salida',date,amount,concept,category:'pagos_fijos',from:acc.id,to:null,account:acc.id,note});
-   }
-   x.concept=concept;x.amount=amount;x.date=date;x.status=status;x.accountId=status==='pagado'?accountId:null;x.note=note;
-  }else{
-   if(status==='pagado'&&(!acc||Number(acc.balance)<amount)){alert('Selecciona una cuenta con saldo suficiente.');return}
-   const r={id:uid(),created:Date.now(),concept,amount,date,status,accountId:status==='pagado'?accountId:null,note};db.fixedPayments.push(r);
-   if(status==='pagado'){
-     acc.balance-=amount;
-     db.moves.push({id:uid(),created:Date.now(),origin:'pagos_fijos',sourceRecordId:r.id,type:'salida',date,amount,concept,category:'pagos_fijos',from:acc.id,to:null,account:acc.id,note});
-   }
-  }
-  save();renderFixedPayments();closeModal();
- }
-});
+}
+);
 
 document.addEventListener('click',function(ev){const b=ev.target.closest?.('[data-action="import-loyverse-treasury"]');if(b){openLoyverseTreasuryImportTest()}});
 
