@@ -1100,10 +1100,16 @@ function importData(file){
  reader.onload=function(){
   try{
    const payload=JSON.parse(reader.result),d=payload.data||payload;
-   if(!d.accounts||!d.moves||!d.categories){throw new Error('El archivo no parece un respaldo válido de Panorama Finanzas.')}
+   const requiredArrays=['accounts','moves','providers','commitments','providerPayments','commitmentPayments','payrollEmployees','payrollPeriods','fixedPayments','cuts','reconciliations','posCloses','adjustments','loyverseSummaries','loyverseTreasuryExpenses'];
+   if(!d||typeof d!=='object'||Array.isArray(d)||!Array.isArray(d.accounts)||!Array.isArray(d.moves)||!d.categories||typeof d.categories!=='object'){
+     throw new Error('El archivo no parece un respaldo válido de Panorama Finanzas.');
+   }
+   if(payload.app&&payload.app!=='Panorama Finanzas')throw new Error('El archivo pertenece a otra aplicación.');
+   if(payload.version&&typeof payload.version!=='string')throw new Error('Versión de respaldo inválida.');
+   ['entrada','salida','compromiso'].forEach(k=>{if(!Array.isArray(d.categories[k]))throw new Error('Falta el catálogo '+k+'.')});
+   requiredArrays.forEach(k=>{if(!Array.isArray(d[k]))d[k]=[]});
    if(!confirm('Esto reemplazará los datos actuales por el respaldo. ¿Continuar?'))return;
-   db=d;
-   db.providers=db.providers||[];db.commitments=db.commitments||[];db.cuts=db.cuts||[];db.providerPayments=db.providerPayments||[];db.commitmentPayments=db.commitmentPayments||[];db.reconciliations=db.reconciliations||[];db.posCloses=db.posCloses||[];db.adjustments=db.adjustments||[];db.loyverseSummaries=db.loyverseSummaries||[];
+   db=clone(d);
    save();alert('Respaldo importado correctamente.');
   }catch(err){alert('No se pudo importar el respaldo: '+err.message)}
  };
@@ -1167,15 +1173,39 @@ document.addEventListener('submit',function(ev){
   if(!concept){alert('Escribe el concepto.');return}
   if(!Number.isFinite(amount)||amount<=0){alert('El importe no es válido.');return}
   if(!date){alert('Selecciona una fecha.');return}
-  if(status==='pagado'&&(!acc||Number(acc.balance)<amount)){alert('Selecciona una cuenta con saldo suficiente.');return}
   db.fixedPayments=db.fixedPayments||[];
   const x=form.dataset.fixedId?db.fixedPayments.find(a=>a.id===form.dataset.fixedId):null;
+
   if(x){
-   if(x.status!=='pagado'&&status==='pagado'){acc.balance-=amount;db.moves.push({id:uid(),created:Date.now(),origin:'pagos_fijos',sourceRecordId:x.id,type:'salida',date,amount,concept,category:'pagos_fijos',from:acc.id,to:null,account:acc.id,note})}
+   const wasPaid=x.status==='pagado';
+   const oldAmount=Number(x.amount||0);
+   const oldAcc=getAccount(x.accountId);
+
+   // Revert the existing paid effect before applying the new state.
+   if(wasPaid){
+     if(oldAcc)oldAcc.balance+=oldAmount;
+     db.moves=db.moves.filter(m=>!(m.sourceRecordId===x.id&&m.origin==='pagos_fijos'));
+   }
+
+   if(status==='pagado'){
+     if(!acc||Number(acc.balance)<amount){
+       if(wasPaid&&oldAcc){
+         oldAcc.balance-=oldAmount;
+         db.moves.push({id:uid(),created:Date.now(),origin:'pagos_fijos',sourceRecordId:x.id,type:'salida',date:x.date,amount:oldAmount,concept:x.concept,category:'pagos_fijos',from:oldAcc.id,to:null,account:oldAcc.id,note:x.note||''});
+       }
+       alert('Selecciona una cuenta con saldo suficiente.');return;
+     }
+     acc.balance-=amount;
+     db.moves.push({id:uid(),created:Date.now(),origin:'pagos_fijos',sourceRecordId:x.id,type:'salida',date,amount,concept,category:'pagos_fijos',from:acc.id,to:null,account:acc.id,note});
+   }
    x.concept=concept;x.amount=amount;x.date=date;x.status=status;x.accountId=status==='pagado'?accountId:null;x.note=note;
   }else{
+   if(status==='pagado'&&(!acc||Number(acc.balance)<amount)){alert('Selecciona una cuenta con saldo suficiente.');return}
    const r={id:uid(),created:Date.now(),concept,amount,date,status,accountId:status==='pagado'?accountId:null,note};db.fixedPayments.push(r);
-   if(status==='pagado'){acc.balance-=amount;db.moves.push({id:uid(),created:Date.now(),origin:'pagos_fijos',sourceRecordId:r.id,type:'salida',date,amount,concept,category:'pagos_fijos',from:acc.id,to:null,account:acc.id,note})}
+   if(status==='pagado'){
+     acc.balance-=amount;
+     db.moves.push({id:uid(),created:Date.now(),origin:'pagos_fijos',sourceRecordId:r.id,type:'salida',date,amount,concept,category:'pagos_fijos',from:acc.id,to:null,account:acc.id,note});
+   }
   }
   save();renderFixedPayments();closeModal();
  }
