@@ -186,7 +186,7 @@ function openMovementDetail(id){
 }
 function editMovement(id){
  const m=(db.moves||[]).find(x=>x.id===id);if(!m)return;
- if(m.ledgerEntryId){alert('Este movimiento ya pertenece al libro financiero. Para mantener el historial inmutable, elimínalo y registra uno nuevo en lugar de editarlo.');return}
+ if(!m.ledgerEntryId){alert('Este movimiento no está vinculado al libro financiero y no puede editarse directamente. Registra un movimiento nuevo para conservar la integridad del historial.');return}
  if(m.type==='transferencia'){alert('Las transferencias no se editan directamente. Elimínala y registra una nueva para mantener ambos saldos sincronizados.');return}
  if(m.linkedType==='providerPurchase'){alert('Las compras de proveedor registradas en el libro financiero son inmutables. Para corregirlas, elimina/revierte la operación y registra una nueva.');return}
  if(m.linkedType==='provider'){alert('Los pagos a proveedores registrados en el libro financiero son inmutables. Para corregirlos, elimina/revierte el pago y registra uno nuevo.');return}
@@ -469,7 +469,9 @@ function editPayment(kind,pid){
  const list=kind==='provider'?db.providerPayments:db.commitmentPayments;
  const p=findPayment(kind,pid), entity=linkedEntity(kind,p);
  if(!p||!entity)return;
- if(p.ledgerEntryId){alert('Este pago ya está contabilizado en el libro financiero. Para corregirlo, reviértelo y registra uno nuevo.');return;}
+ if(!p.ledgerEntryId){alert('Este pago no está vinculado al libro financiero y no puede editarse directamente. Regístralo nuevamente para conservar la integridad del historial.');return;}
+ alert('Este pago ya está contabilizado en el libro financiero. Para corregirlo, reviértelo y registra uno nuevo.');
+ return;
  const currentAmount=Number(p.amount||0);
  const currentPaid=kind==='provider'
    ?Number(entity.creditBalance||0)
@@ -526,6 +528,7 @@ async function deletePayment(kind,pid){
  if(!confirm('¿Eliminar este pago? Se revertirá la salida financiera y el saldo pendiente.'))return;
  try{
   if(kind==='provider') await window.PanoramaFinanceLedger.reverseProviderPayment({id:pid,reversalId:uid(),reason:'Reversión de pago a proveedor'});
+  else await window.PanoramaFinanceLedger.reverseCommitmentPayment({id:pid,reversalId:uid(),reason:'Reversión de pago de compromiso'});
   if(acc)acc.balance+=Number(p.amount||0);
   if(entity){
    if(kind==='provider')entity.creditBalance=Number(entity.creditBalance||0)+Number(p.amount||0);
@@ -685,10 +688,12 @@ function openProvider(editId){
 function editProviderPurchase(id){
  const x=(db.providerPurchases||[]).find(a=>a.id===id);if(!x)return;
  const linkedMove=(db.moves||[]).find(m=>m.linkedType==='providerPurchase'&&m.linkedId===id);
- if(linkedMove?.ledgerEntryId){
-  alert('Esta compra ya pertenece al libro financiero. Para mantener el historial inmutable, reviértela y registra una nueva en lugar de editarla.');
+ if(!linkedMove?.ledgerEntryId){
+  alert('Esta compra no está vinculada al libro financiero y no puede editarse directamente. Registra una compra nueva para conservar la integridad del historial.');
   return;
  }
+ alert('Esta compra ya pertenece al libro financiero. Para mantener el historial inmutable, reviértela y registra una nueva en lugar de editarla.');
+ return;
  const p=db.providers.find(a=>a.id===x.providerId);if(!p)return;
  openModal('<h2>Editar compra</h2><div class="notice"><b>'+esc(p.name)+'</b><br>Editar una compra puede modificar el saldo y/o la cuenta afectada.</div>'+
  '<form id="editProviderPurchaseForm"><div class="formGrid"><div class="field"><label>Fecha</label><input class="input" name="date" type="date" value="'+esc(x.date)+'" required></div>'+
@@ -821,10 +826,11 @@ function recordPayment(kind,entityId){
     acc.balance-=amount;entity.creditBalance=Math.max(0,Number(entity.creditBalance||0)-amount);
     db.providerPayments.push({id,created:Date.now(),date,amount,accountId:acc.id,note,providerId:entity.id});
    }else{
+    await window.PanoramaFinanceLedger.postCommitmentPayment({id,date,commitmentId:entity.id,amount,accountId:acc.id,note});
     acc.balance-=amount;entity.paid=Number(entity.paid||0)+amount;
-    db.commitmentPayments.push({id,created:Date.now(),date,amount,accountId:acc.id,note,commitmentId:entity.id});
+    db.commitmentPayments.push({id,ledgerEntryId:id,created:Date.now(),date,amount,accountId:acc.id,note,commitmentId:entity.id});
    }
-   db.moves.push({id,ledgerEntryId:kind==='provider'?id:null,paymentId:id,created:Date.now(),type:'salida',date,amount,concept:'Pago — '+entity.name,category:kind==='provider'?'proveedores':(entity.category||'deudas'),from:acc.id,to:null,account:acc.id,note,linkedType:kind,linkedId:entity.id});
+   db.moves.push({id,ledgerEntryId:id,paymentId:id,created:Date.now(),type:'salida',date,amount,concept:'Pago — '+entity.name,category:kind==='provider'?'proveedores':(entity.category||'deudas'),from:acc.id,to:null,account:acc.id,note,linkedType:kind,linkedId:entity.id});
    if(save())closeModal();
   }catch(err){console.error(err);alert('No se pudo registrar el pago en el libro financiero.\n\n'+err.message)}
  });
