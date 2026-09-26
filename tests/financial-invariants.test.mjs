@@ -189,7 +189,8 @@ test('regresión: movimientos legacy sin ledger no pueden eliminarse directament
   const block=app.slice(start,end);
   assert.match(block,/!m\.ledgerEntryId/);
   assert.match(block,/anterior al libro transaccional/);
-});\ntest('regresión: eliminación de movimiento ledger usa reversión atómica',()=>{
+});
+test('regresión: eliminación de movimiento ledger usa reversión atómica',()=>{
   assert.match(app,/PanoramaFinanceLedger\.reverse/);
   assert.match(migration,/create or replace function private\.reverse_finance_entry/);
   assert.match(migration,/reverses_entry_id/);
@@ -217,11 +218,13 @@ test('regresión: nómina local usa el ledger transaccional',()=>{
   assert.match(app,/PanoramaFinanceLedger\\.postEntry/);
   assert.match(app,/source:'payroll'/);
   assert.match(app,/ledgerEntryId:movementId/);
-});\ntest('regresión: pago de nómina core conserva referencia al ledger',()=>{
+});
+test('regresión: pago de nómina core conserva referencia al ledger',()=>{
   const start=app.indexOf('function openCorePayrollPayment');
   const end=app.indexOf("window.addEventListener('panorama-core-finance-ready'",start);
   assert.match(app.slice(start,end),/ledgerEntryId:movementId/);
-});\ntest('regresión: operaciones de proveedores usan RPC transaccional',()=>{
+});
+test('regresión: operaciones de proveedores usan RPC transaccional',()=>{
   assert.match(app,/PanoramaFinanceLedger\.postProviderPurchase/);
   assert.match(app,/PanoramaFinanceLedger\.postProviderPayment/);
   assert.match(app,/PanoramaFinanceLedger\.reverseProviderPurchase/);
