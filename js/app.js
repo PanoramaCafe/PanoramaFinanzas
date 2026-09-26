@@ -463,11 +463,20 @@ function openMovement(type){
    const f=new FormData(e.target),amt=Number(f.get('amount')),from=getAccount(f.get('from')),to=getAccount(f.get('to')),id=uid();
    if(!Number.isFinite(amt)||amt<=0||!from||!to||from.id===to.id){alert('Revisa origen, destino e importe.');return}
    if(from.balance<amt){alert('La cuenta de origen no tiene saldo suficiente.');return}
+   const pre=window.PanoramaFinanceIntegrity?.validate(db,{silent:true});
+   if(pre&&!pre.ok){
+    try{await window.PanoramaCoreFinance?.sync();db=load();lastGoodState=clone(db)}catch(syncErr){console.warn('No se pudo recuperar el estado antes de registrar la transferencia',syncErr)}
+    const retry=window.PanoramaFinanceIntegrity?.validate(db,{silent:true});
+    if(retry&&!retry.ok){alert('No se puede registrar la transferencia porque la caché financiera local está inconsistente. Se detuvo antes de tocar el libro financiero.\n\n'+retry.errors.slice(0,5).join('\n'));return}
+   }
    try{
     await window.PanoramaFinanceLedger.transfer({id,date:f.get('date'),amount:amt,fromAccountId:from.id,toAccountId:to.id,concept:'Transferencia',metadata:{note:f.get('note')||''}});
     from.balance-=amt;to.balance+=amt;
     db.moves.push({id,ledgerEntryId:id,created:Date.now(),origin:'manual',type:'transferencia',date:f.get('date'),amount:amt,concept:'Transferencia',category:'',from:from.id,to:to.id,account:from.id,note:f.get('note')||''});
     if(save())closeModal();
+    else{
+      try{await window.PanoramaFinanceLedger.reverse({id,reversalId:uid(),date:today(),reason:'Rollback: fallo al guardar estado compatible'});}catch(rollbackErr){console.error('FALLO CRÍTICO: no se pudo revertir la transferencia tras fallo de estado',rollbackErr);alert('El libro financiero registró la transferencia, pero el estado compatible no pudo guardarse y tampoco se pudo revertir automáticamente. No vuelvas a intentarlo; requiere conciliación.');return}
+    }
    }catch(err){console.error(err);alert('No se pudo registrar la transferencia en el libro financiero.\n\n'+err.message)}
   });return;
  }
@@ -485,11 +494,20 @@ function openMovement(type){
   if(!Number.isFinite(amount)||amount<=0||!acc){alert('Revisa importe y cuenta.');return}
   if(isOut&&acc.balance<amount){alert('La cuenta no tiene saldo suficiente.');return}
   if(externalId&&db.moves.some(m=>String(m.origin||'')===origin&&String(m.externalId||'')===externalId)){alert('Esa referencia externa ya está registrada.');return}
+  const pre=window.PanoramaFinanceIntegrity?.validate(db,{silent:true});
+  if(pre&&!pre.ok){
+   try{await window.PanoramaCoreFinance?.sync();db=load();lastGoodState=clone(db)}catch(syncErr){console.warn('No se pudo recuperar el estado antes de registrar el movimiento',syncErr)}
+   const retry=window.PanoramaFinanceIntegrity?.validate(db,{silent:true});
+   if(retry&&!retry.ok){alert('No se puede registrar esta entrada/salida porque la caché financiera local está inconsistente. Se detuvo antes de tocar el libro financiero.\n\n'+retry.errors.slice(0,5).join('\n'));return}
+  }
   try{
    await window.PanoramaFinanceLedger.postEntry({id,date:f.get('date'),type:isOut?'salida':'entrada',amount,accountId:acc.id,concept:f.get('note')||(isOut?'Salida manual':'Entrada manual'),category:f.get('category')||null,source:origin,externalId:externalId||null});
    if(isOut)acc.balance-=amount;else acc.balance+=amount;
    db.moves.push({id,ledgerEntryId:id,created:Date.now(),origin,externalId,type:isOut?'salida':'entrada',date:f.get('date'),amount,concept:f.get('note')|| (isOut?'Salida manual':'Entrada manual'),category:f.get('category')||'',from:isOut?acc.id:null,to:isOut?null:acc.id,account:acc.id,note:f.get('note')||''});
    if(save())closeModal();
+   else{
+    try{await window.PanoramaFinanceLedger.reverse({id,reversalId:uid(),date:today(),reason:'Rollback: fallo al guardar estado compatible'});}catch(rollbackErr){console.error('FALLO CRÍTICO: no se pudo revertir el movimiento tras fallo de estado',rollbackErr);alert('El libro financiero registró el movimiento, pero el estado compatible no pudo guardarse y tampoco se pudo revertir automáticamente. No vuelvas a intentarlo; requiere conciliación.');return}
+   }
   }catch(err){console.error(err);alert('No se pudo registrar el movimiento en el libro financiero.\n\n'+err.message)}
  });
 }
