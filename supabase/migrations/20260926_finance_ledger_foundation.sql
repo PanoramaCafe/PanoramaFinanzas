@@ -239,3 +239,36 @@ revoke execute on function public.post_finance_entry(text,date,text,numeric,text
 revoke execute on function public.post_finance_transfer(text,date,numeric,text,text,text,text,text,jsonb) from public,anon;
 grant execute on function public.post_finance_entry(text,date,text,numeric,text,text,text,text,text,jsonb) to authenticated;
 grant execute on function public.post_finance_transfer(text,date,numeric,text,text,text,text,text,jsonb) to authenticated;
+
+create index if not exists finance_audit_actor_idx on private.finance_audit_log(actor_user_id);
+create index if not exists finance_ledger_reverses_idx on private.finance_ledger_entries(reverses_entry_id);
+
+drop policy if exists finance_accounts_access on private.finance_accounts;
+create policy finance_accounts_access on private.finance_accounts
+for all to authenticated
+using ((select private.has_panorama_finanzas_access()))
+with check ((select private.has_panorama_finanzas_access()));
+
+drop policy if exists finance_ledger_entries_access on private.finance_ledger_entries;
+create policy finance_ledger_entries_access on private.finance_ledger_entries
+for all to authenticated
+using ((select private.has_panorama_finanzas_access()))
+with check ((select private.has_panorama_finanzas_access()));
+
+drop policy if exists finance_integration_events_access on private.finance_integration_events;
+create policy finance_integration_events_access on private.finance_integration_events
+for all to authenticated
+using ((select private.has_panorama_finanzas_access()))
+with check ((select private.has_panorama_finanzas_access()));
+
+drop policy if exists finance_balance_snapshots_access on private.finance_balance_snapshots;
+create policy finance_balance_snapshots_access on private.finance_balance_snapshots
+for all to authenticated
+using ((select private.has_panorama_finanzas_access()))
+with check ((select private.has_panorama_finanzas_access()));
+
+drop policy if exists finance_audit_log_access on private.finance_audit_log;
+create policy finance_audit_log_access on private.finance_audit_log
+for all to authenticated
+using ((select private.has_panorama_finanzas_access()))
+with check ((select private.has_panorama_finanzas_access()));
