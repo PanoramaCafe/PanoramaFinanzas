@@ -1246,7 +1246,7 @@ if(sidebar){
       else if(!hasSession||/AUTH_REQUIRED|jwt|unauthori[sz]ed|401/i.test(msg+' '+code))label='🔐 Sesión requerida';
       else if(/ACCESS_DENIED|42501|403/i.test(msg+' '+code))label='🔒 Sin acceso a finanzas';
       else if(/STATE_NOT_FOUND|Nube no devolvió/i.test(msg+' '+code))label='❌ Nube sin estado';
-      if(status)status.textContent=label;
+      if(status)status.textContent=label+(e?.status?' · HTTP '+e.status:'')+(code?' · '+code:'');
       return null;
     }finally{pullBusy=false}
   }
