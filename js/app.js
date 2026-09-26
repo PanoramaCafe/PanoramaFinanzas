@@ -716,6 +716,11 @@ function openProvider(editId){
 
 function editProviderPurchase(id){
  const x=(db.providerPurchases||[]).find(a=>a.id===id);if(!x)return;
+ const linkedMove=(db.moves||[]).find(m=>m.linkedType==='providerPurchase'&&m.linkedId===id);
+ if(linkedMove?.ledgerEntryId){
+  alert('Esta compra ya pertenece al libro financiero. Para mantener el historial inmutable, reviértela y registra una nueva en lugar de editarla.');
+  return;
+ }
  const p=db.providers.find(a=>a.id===x.providerId);if(!p)return;
  openModal('<h2>Editar compra</h2><div class="notice"><b>'+esc(p.name)+'</b><br>Editar una compra puede modificar el saldo y/o la cuenta afectada.</div>'+
  '<form id="editProviderPurchaseForm"><div class="formGrid"><div class="field"><label>Fecha</label><input class="input" name="date" type="date" value="'+esc(x.date)+'" required></div>'+

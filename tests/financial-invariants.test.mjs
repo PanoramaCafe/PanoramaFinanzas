@@ -183,7 +183,14 @@ test('regresión: movimientos manuales nuevos usan el ledger transaccional',()=>
 test('regresión: movimientos del ledger no se editan directamente',()=>{
   assert.match(app,/if\(m\.ledgerEntryId\)\{alert\('Este movimiento ya pertenece al libro financiero/);
 });
-test('regresión: movimientos legacy sin ledger no pueden eliminarse directamente',()=>{\n  const start=app.indexOf('async function deleteMovement');\n  const end=app.indexOf('function renderAccounts',start);\n  const block=app.slice(start,end);\n  assert.match(block,/!m\.ledgerEntryId/);\n  assert.match(block,/anterior al libro transaccional/);\n});\ntest('regresión: eliminación de movimiento ledger usa reversión atómica',()=>{
+test('regresión: movimientos legacy sin ledger no pueden eliminarse directamente',()=>{
+  const start=app.indexOf('async function deleteMovement');
+  const end=app.indexOf('function renderAccounts',start);
+  const block=app.slice(start,end);
+  assert.match(block,/!m\.ledgerEntryId/);
+  assert.match(block,/anterior al libro transaccional/);
+});
+test('regresión: eliminación de movimiento ledger usa reversión atómica',()=>{
   assert.match(app,/PanoramaFinanceLedger\.reverse/);
   assert.match(migration,/create or replace function private\.reverse_finance_entry/);
   assert.match(migration,/reverses_entry_id/);
@@ -207,13 +214,31 @@ test('regresión: el saldo de una cuenta existente no se edita directamente',()=
 });
 
 
-test('regresión: nómina local usa el ledger transaccional',()=>{\n  assert.match(app,/PanoramaFinanceLedger\\.postEntry/);\n  assert.match(app,/source:'payroll'/);\n  assert.match(app,/ledgerEntryId:movementId/);\n});\ntest('regresión: pago de nómina core conserva referencia al ledger',()=>{\n  const start=app.indexOf('function openCorePayrollPayment');\n  const end=app.indexOf("window.addEventListener('panorama-core-finance-ready'",start);\n  assert.match(app.slice(start,end),/ledgerEntryId:movementId/);\n});\ntest('regresión: operaciones de proveedores usan RPC transaccional',()=>{
+test('regresión: nómina local usa el ledger transaccional',()=>{
+  assert.match(app,/PanoramaFinanceLedger\.postEntry/);
+  assert.match(app,/source:'payroll'/);
+  assert.match(app,/ledgerEntryId:movementId/);
+});
+test('regresión: pago de nómina core conserva referencia al ledger',()=>{
+  const start=app.indexOf('function openCorePayrollPayment');
+  const end=app.indexOf("window.addEventListener('panorama-core-finance-ready'",start);
+  assert.match(app.slice(start,end),/ledgerEntryId:movementId/);
+});
+test('regresión: operaciones de proveedores usan RPC transaccional',()=>{
   assert.match(app,/PanoramaFinanceLedger\.postProviderPurchase/);
   assert.match(app,/PanoramaFinanceLedger\.postProviderPayment/);
   assert.match(app,/PanoramaFinanceLedger\.reverseProviderPurchase/);
   assert.match(app,/PanoramaFinanceLedger\.reverseProviderPayment/);
   assert.match(app,/Las compras de proveedor registradas en el libro financiero son inmutables/);
 });
+test('regresión: compras de proveedor del ledger no se editan directamente',()=>{
+  const start=app.indexOf('function editProviderPurchase');
+  const end=app.indexOf('\nasync function deleteProviderPurchase',start);
+  const block=app.slice(start,end);
+  assert.match(block,/linkedMove\?\.ledgerEntryId/);
+  assert.match(block,/reviértela y registra una nueva/);
+});
+
 test('regresión: el adaptador expone el ciclo transaccional de proveedores',()=>{
   assert.match(ledger,/postProviderPurchase/);
   assert.match(ledger,/postProviderPayment/);
@@ -234,8 +259,9 @@ test('regresión: el submit de pagos fijos confirma PostgreSQL antes de mutar el
 });
 
 
-test('regresión: pagos fijos pagados no reutilizan el registro después de reversión',()=>{
-  assert.match(ledger,/existing\.status==='pagado'\|\|existing\.status==='revertido'/);
+test('regresión: adaptador de pagos fijos expone pago y reversión separados',()=>{
+  assert.match(ledger,/payFixedPayment/);
+  assert.match(ledger,/reverseFixedPayment/);
 });
 
 
