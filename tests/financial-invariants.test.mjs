@@ -214,6 +214,14 @@ test('regresión: nómina local usa el ledger transaccional',()=>{\n  assert.mat
   assert.match(app,/PanoramaFinanceLedger\.reverseProviderPayment/);
   assert.match(app,/Las compras de proveedor registradas en el libro financiero son inmutables/);
 });
+test('regresión: compras de proveedor del ledger no se editan directamente',()=>{
+  const start=app.indexOf('function editProviderPurchase');
+  const end=app.indexOf('\nasync function deleteProviderPurchase',start);
+  const block=app.slice(start,end);
+  assert.match(block,/linkedMove\?\.ledgerEntryId/);
+  assert.match(block,/reviértela y registra una nueva/);
+});
+
 test('regresión: el adaptador expone el ciclo transaccional de proveedores',()=>{
   assert.match(ledger,/postProviderPurchase/);
   assert.match(ledger,/postProviderPayment/);
