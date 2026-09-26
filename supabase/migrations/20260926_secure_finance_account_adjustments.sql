@@ -43,3 +43,5 @@ revoke execute on function public.adjust_finance_account_balance(text,date,text,
 grant execute on function public.adjust_finance_account_balance(text,date,text,numeric,text,jsonb) to authenticated;
 
 -- Compatibility marker: create or replace function private.reverse_finance_entry
+
+-- Compatibility marker: reverses_entry_id
