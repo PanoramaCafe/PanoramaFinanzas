@@ -26,7 +26,7 @@ function syncState(state){if(valid(state))write(STORE,clone(state));if(navigator
 function getSummary(){return {source:'finanzas',ready:true,pending:!!read(QUEUE),indicators:{},alerts:[]}}
 async function confirmPayrollPayment(reqData,movementId,accountId,paidAt,note){
   if(!window.PanoramaAuth?.session)throw new Error('Sesión no autenticada');
-  const payload={p_payment_request_id:reqData.id,p_financial_movement_id:String(movementId),p_financial_account_id:String(accountId),p_amount:Number(reqData.amount),p_notes:String(note||'')};
+  const payload={p_payment_request_id:reqData.id,p_financial_movement_id:String(movementId),p_financial_account_id:String(accountId),p_amount:Number(reqData.amount),p_occurred_on:String(String(paidAt).slice(0,10)),p_notes:String(note||'')};
   const r=await req('rpc/confirm_payroll_payment',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify(payload)});
   return Array.isArray(r)?r[0]:r;
 }
