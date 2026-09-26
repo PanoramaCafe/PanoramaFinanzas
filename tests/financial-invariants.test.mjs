@@ -107,7 +107,18 @@ test('regresión: confirmación de nómina ocurre antes de descontar saldo local
   assert.ok(debitPos > confirmPos);
 });
 
+test('regresión: pagos fijos revierten el movimiento anterior al editar un pago ya pagado', () => {
+  const start = app.indexOf("if(x){");
+  const end = app.indexOf("save();renderFixedPayments();closeModal();", start);
+  const block = app.slice(start, end);
+  assert.match(block, /const wasPaid=x\.status==='pagado'/);
+  assert.match(block, /oldAcc\.balance\+=oldAmount/);
+  assert.match(block, /sourceRecordId===x\.id&&m\.origin==='pagos_fijos'/);
+});
+
 test('regresión: respaldo JSON sigue separado de exportación XLSX', () => {
   assert.match(app, /getElementById\('btnExportData'\)\.addEventListener\('click',exportData\)/);
   assert.match(app, /a\.download='Panorama_Finanzas_Backup_/);
+  assert.match(app, /requiredArrays=\['accounts','moves'/);
+  assert.match(app, /db=clone\(d\)/);
 });
