@@ -4,6 +4,7 @@ import fs from 'node:fs';
 
 const migration=fs.readFileSync(new URL('../supabase/migrations/20260926_finance_ledger_foundation.sql',import.meta.url),'utf8');
 const adapter=fs.readFileSync(new URL('../js/finance-ledger.js',import.meta.url),'utf8');
+const rpcSecurity=fs.readFileSync(new URL('../supabase/migrations/20260926194000_secure_finance_rpc_wrappers.sql',import.meta.url),'utf8');
 
 test('ledger foundation defines private financial tables',()=>{
   assert.match(migration,/create table if not exists private\.finance_accounts/);
@@ -39,7 +40,7 @@ test('browser adapter uses authenticated RPCs instead of direct private-table ac
 
 test('public ledger RPC wrappers run as security definer',()=>{
   for (const name of ['post_finance_entry','post_finance_transfer']) {
-    const block=new RegExp('create or replace function public\\.'+name+'[\\s\\S]*?language sql security definer').test(migration);
+    const block=new RegExp('create or replace function public\\.'+name+'[\\s\\S]*?language sql security definer').test(rpcSecurity);
     assert.equal(block,true,name+' debe ser SECURITY DEFINER');
   }
 });
