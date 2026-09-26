@@ -177,8 +177,8 @@ function editMovement(id){
  const m=(db.moves||[]).find(x=>x.id===id);if(!m)return;
  if(m.ledgerEntryId){alert('Este movimiento ya pertenece al libro financiero. Para mantener el historial inmutable, elimínalo y registra uno nuevo en lugar de editarlo.');return}
  if(m.type==='transferencia'){alert('Las transferencias no se editan directamente. Elimínala y registra una nueva para mantener ambos saldos sincronizados.');return}
- if(m.linkedType==='providerPurchase'){editProviderPurchase(m.linkedId);return}
- if(m.linkedType==='provider'){editPayment('provider',m.paymentId||m.linkedId);return}
+ if(m.linkedType==='providerPurchase'){alert('Las compras de proveedor registradas en el libro financiero son inmutables. Para corregirlas, elimina/revierte la operación y registra una nueva.');return}
+ if(m.linkedType==='provider'){alert('Los pagos a proveedores registrados en el libro financiero son inmutables. Para corregirlos, elimina/revierte el pago y registra uno nuevo.');return}
  if(m.linkedType==='commitment'){editPayment('commitment',m.paymentId||m.linkedId);return}
  if(m.linkedType==='loyverseTreasury'){alert('Este movimiento proviene de Loyverse. Debe modificarse desde Loyverse o desde el registro de Salidas de tesorería Loyverse.');return}
  if(m.linkedType){alert('Este movimiento está vinculado a otro módulo. Modifícalo desde su registro de origen para evitar duplicidades.');return}
@@ -506,19 +506,22 @@ function editPayment(kind,pid){
   }
   save();closeModal();
  });
-function deletePayment(kind,pid){
+async function deletePayment(kind,pid){
  const list=kind==='provider'?db.providerPayments:db.commitmentPayments;
  const idx=list.findIndex(p=>p.id===pid);if(idx<0)return;
  const p=list[idx], entity=linkedEntity(kind,p), acc=getAccount(p.accountId);
  if(!confirm('¿Eliminar este pago? Se revertirá la salida financiera y el saldo pendiente.'))return;
- if(acc)acc.balance+=Number(p.amount||0);
- if(entity){
+ try{
+  if(kind==='provider') await window.PanoramaFinanceLedger.reverseProviderPayment({id:pid,reversalId:uid(),reason:'Reversión de pago a proveedor'});
+  if(acc)acc.balance+=Number(p.amount||0);
+  if(entity){
    if(kind==='provider')entity.creditBalance=Number(entity.creditBalance||0)+Number(p.amount||0);
-   else entity.paid=Math.max(0,Number(entity.paid||0)-Number(p.amount||0));
- }
- db.moves=db.moves.filter(m=>m.paymentId!==pid);
- list.splice(idx,1);
- save();
+   else entity.paid=Math.max(0,Number(entity.paid||0)-Number(p.amount||0);
+  }
+  db.moves=db.moves.filter(m=>m.paymentId!==pid);
+  list.splice(idx,1);
+  save();
+ }catch(err){console.error(err);alert('No se pudo revertir el pago en el libro financiero.\n\n'+err.message)}
 }
 
 function openMovement(type){
@@ -698,7 +701,18 @@ function openProvider(editId){
  '<div class="notice">No captures aquí una deuda. La deuda aparece únicamente al registrar una compra a crédito.</div>'+
  '<div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Guardar</button></div></form>');
  document.getElementById('cancelModal').addEventListener('click',closeModal);
- document.getElementById('providerForm').addEventListener('submit',function(e){e.preventDefault();const f=new FormData(e.target);if(editId){p.name=f.get('name');p.paymentType=f.get('paymentType');p.note=f.get('note')}else db.providers.push({id:uid(),name:f.get('name'),paymentType:f.get('paymentType'),note:f.get('note'),creditBalance:0});save();closeModal()});
+ document.getElementById('providerForm').addEventListener('submit',async function(e){
+  e.preventDefault();
+  const f=new FormData(e.target),name=String(f.get('name')).trim(),paymentType=String(f.get('paymentType')),note=String(f.get('note')||'');
+  if(!name){alert('El nombre del proveedor es obligatorio.');return}
+  const id=editId||uid();
+  try{
+   await window.PanoramaFinanceLedger.upsertProvider({id,name,paymentType,note});
+   if(editId){p.name=name;p.paymentType=paymentType;p.note=note}
+   else db.providers.push({id,name,paymentType,note,creditBalance:0});
+   if(save())closeModal();
+  }catch(err){console.error(err);alert('No se pudo guardar el proveedor en el libro financiero.\n\n'+err.message)}
+ });
 }
 
 function editProviderPurchase(id){
@@ -775,21 +789,24 @@ function openProviderPurchase(providerId){
  const sync=()=>{form.querySelector('[name="account"]').disabled=form.querySelector('[name="paymentType"]').value!=='cash'};
  form.querySelector('[name="paymentType"]').addEventListener('change',sync);sync();
  document.getElementById('cancelModal').addEventListener('click',closeModal);
- form.addEventListener('submit',function(e){
+ form.addEventListener('submit',async function(e){
   e.preventDefault();
-  const f=new FormData(e.target),amount=Number(f.get('amount')),type=String(f.get('paymentType')),acc=getAccount(f.get('account'));
+  const f=new FormData(e.target),amount=Number(f.get('amount')),type=String(f.get('paymentType')),acc=getAccount(f.get('account')),id=uid(),date=String(f.get('date')),note=String(f.get('note')||'');
   if(!Number.isFinite(amount)||amount<=0){alert('El importe no es válido.');return}
   if(type==='cash'&&(!acc||Number(acc.balance)<amount)){alert('La cuenta no tiene saldo suficiente.');return}
-  const purchase={id:uid(),created:Date.now(),providerId:p.id,date:f.get('date'),amount,mode:type,accountId:type==='cash'?acc.id:null,note:f.get('note')||''};
-  db.providerPurchases=db.providerPurchases||[];db.providerPurchases.push(purchase);
-  if(type==='cash'){
+  try{
+   await window.PanoramaFinanceLedger.postProviderPurchase({id,date,providerId:p.id,amount,mode:type,accountId:type==='cash'?acc.id:null,note});
+   const purchase={id,created:Date.now(),providerId:p.id,date,amount,mode:type,accountId:type==='cash'?acc.id:null,note};
+   db.providerPurchases=db.providerPurchases||[];db.providerPurchases.push(purchase);
+   if(type==='cash'){
     acc.balance-=amount;
-    db.moves.push({id:uid(),created:Date.now(),type:'salida',date:purchase.date,amount,concept:'Compra — '+p.name,category:'proveedores',from:acc.id,to:null,account:acc.id,note:purchase.note,linkedType:'providerPurchase',linkedId:purchase.id});
-  }else{
+    db.moves.push({id,ledgerEntryId:id,created:Date.now(),type:'salida',date,amount,concept:'Compra — '+p.name,category:'proveedores',from:acc.id,to:null,account:acc.id,note,linkedType:'providerPurchase',linkedId:id});
+   }else{
     p.creditBalance=Number(p.creditBalance||0)+amount;
-    db.moves.push({id:uid(),created:Date.now(),type:'compra_credito',date:purchase.date,amount,concept:'Compra a crédito — '+p.name,category:'proveedores',from:null,to:null,account:null,note:purchase.note,linkedType:'providerPurchase',linkedId:purchase.id,credit:true});
-  }
-  save();renderProviders();renderPayments();closeModal();
+    db.moves.push({id,created:Date.now(),type:'compra_credito',date,amount,concept:'Compra a crédito — '+p.name,category:'proveedores',from:null,to:null,account:null,note,linkedType:'providerPurchase',linkedId:id,credit:true});
+   }
+   if(save())closeModal();
+  }catch(err){console.error(err);alert('No se pudo registrar la compra en el libro financiero.\n\n'+err.message)}
  });
 }
 
@@ -822,16 +839,22 @@ function recordPayment(kind,entityId){
  '<div class="field"><label>Nota</label><input class="input" name="note"></div></div>'+
  '<div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Registrar pago y salida</button></div></form>');
  document.getElementById('cancelModal').addEventListener('click',closeModal);
- document.getElementById('paymentForm').addEventListener('submit',function(e){
-  e.preventDefault();const f=new FormData(e.target),amount=Number(f.get('amount')),acc=getAccount(f.get('account'));
+ document.getElementById('paymentForm').addEventListener('submit',async function(e){
+  e.preventDefault();const f=new FormData(e.target),amount=Number(f.get('amount')),acc=getAccount(f.get('account')),date=String(f.get('date')),note=String(f.get('note')||''),id=uid();
   if(!Number.isFinite(amount)||amount<=0||amount>due){alert('El pago no puede superar el saldo pendiente de '+money(due)+'.');return}
   if(!acc||Number(acc.balance)<amount){alert('La cuenta no tiene saldo suficiente.');return}
-  acc.balance-=amount;
-  const payment={id:uid(),created:Date.now(),date:f.get('date'),amount,accountId:acc.id,note:f.get('note')||''};
-  if(kind==='provider'){payment.providerId=entity.id;db.providerPayments.push(payment);entity.creditBalance=Math.max(0,Number(entity.creditBalance||0)-amount)}
-  else {payment.commitmentId=entity.id;entity.paid=Number(entity.paid||0)+amount;db.commitmentPayments.push(payment)}
-  db.moves.push({id:uid(),paymentId:payment.id,created:Date.now(),type:'salida',date:payment.date,amount,concept:'Pago — '+entity.name,category:kind==='provider'?'proveedores':(entity.category||'deudas'),from:acc.id,to:null,account:acc.id,note:payment.note,linkedType:kind,linkedId:entity.id});
-  save();renderProviders();renderPayments();closeModal();
+  try{
+   if(kind==='provider'){
+    await window.PanoramaFinanceLedger.postProviderPayment({id,date,providerId:entity.id,amount,accountId:acc.id,note});
+    acc.balance-=amount;entity.creditBalance=Math.max(0,Number(entity.creditBalance||0)-amount);
+    db.providerPayments.push({id,created:Date.now(),date,amount,accountId:acc.id,note,providerId:entity.id});
+   }else{
+    acc.balance-=amount;entity.paid=Number(entity.paid||0)+amount;
+    db.commitmentPayments.push({id,created:Date.now(),date,amount,accountId:acc.id,note,commitmentId:entity.id});
+   }
+   db.moves.push({id,ledgerEntryId:kind==='provider'?id:null,paymentId:id,created:Date.now(),type:'salida',date,amount,concept:'Pago — '+entity.name,category:kind==='provider'?'proveedores':(entity.category||'deudas'),from:acc.id,to:null,account:acc.id,note,linkedType:kind,linkedId:entity.id});
+   if(save())closeModal();
+  }catch(err){console.error(err);alert('No se pudo registrar el pago en el libro financiero.\n\n'+err.message)}
  });
 }
 
