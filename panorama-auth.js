@@ -87,8 +87,6 @@ window.PanoramaAuth={
   get session(){return session},
   get user(){return user},
   signOut:async()=>{const c=client();if(c)await c.auth.signOut();setSession(null);},
-  requestAccess:()=>{renderAuth();},
-  directAccess:false
 };
 async function reconcilePersonalPayments(){
  if(!session||!navigator.onLine||!cfg?.url||!cfg?.key||!window.PanoramaCoreFinance)return;
