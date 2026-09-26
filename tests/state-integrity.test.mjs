@@ -69,11 +69,9 @@ test('el motor Core valida antes de escribir al estado remoto',()=>{
   assert.doesNotMatch(core,/headers:\{\.\.\.H,Prefer:/);
 });
 
-test('eventos externos registran el evento antes de mutar el saldo',()=>{
-  const start=app.indexOf('function applyExternalFinancialEvent');
-  const end=app.indexOf('\nfunction openAccount',start);
-  const block=app.slice(start,end);
-  assert.ok(block.indexOf('const id=registerIntegrationEvent(p)')<block.indexOf('if(direction===\'out\')acc.balance-=amount'));
+test('rutas de eventos financieros legacy fueron retiradas',()=>{
+  assert.doesNotMatch(app,/function applyExternalFinancialEvent/);
+  assert.doesNotMatch(app,/function registerIntegrationEvent/);
 });
 
 test('merge de cuentas nuevas conserva su saldo',()=>{

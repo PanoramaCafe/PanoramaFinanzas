@@ -118,10 +118,10 @@ test('regresión: confirmación de nómina ocurre antes de descontar saldo local
   assert.ok(debitPos > confirmPos);
 });
 
-test('regresión: pagos fijos usan exclusivamente el adaptador transaccional', () => {
-  assert.match(app, /upsertFixedPayment/);
-  assert.match(app, /payFixedPayment/);
-  assert.doesNotMatch(app, /if\(form\.id==='fixedPaymentForm'\)\{/);
+test('regresión: pagos fijos usan exclusivamente el adaptador transaccional',()=>{
+  assert.match(ledger,/upsertFixedPayment/);
+  assert.match(ledger,/payFixedPayment/);
+  assert.doesNotMatch(app,/if\(form\.id==='fixedPaymentForm'\)\{/);
 });
 
 test('regresión: eliminar transferencia revierte cuenta origen y destino', () => {
@@ -208,6 +208,10 @@ test('regresión: el saldo de una cuenta existente no se edita directamente',()=
   assert.doesNotMatch(app,/existing\.balance=balance/);
 });
 
+
+test('regresión: nómina de Core envía la fecha elegida al ledger',()=>{
+  assert.match(core,/p_occurred_on:String\(String\(paidAt\)\.slice\(0,10\)\)/);
+});
 
 test('regresión: nómina local usa el ledger transaccional',()=>{
   assert.match(app,/PanoramaFinanceLedger\.postEntry/);
