@@ -229,7 +229,7 @@ test('regresión: pagos de proveedor o compromiso ya contabilizados no se editan
   const end=app.indexOf('\nasync function deletePayment',start);
   const block=app.slice(start,end);
   assert.match(block,/p\.ledgerEntryId/);
-  assert.match(block,/rev\u00e9rtelo y registra uno nuevo/);
+  assert.match(block,/contabilizado en el libro financiero/);
 });
 test('regresión: proveedores y compromisos con operaciones financieras no se eliminan directamente',()=>{
   assert.match(app,/function deleteProvider\(i\).*hasPurchases/);
