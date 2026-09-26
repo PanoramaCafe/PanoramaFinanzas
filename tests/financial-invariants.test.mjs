@@ -183,7 +183,7 @@ test('regresión: movimientos manuales nuevos usan el ledger transaccional',()=>
 test('regresión: movimientos del ledger no se editan directamente',()=>{
   assert.match(app,/if\(m\.ledgerEntryId\)\{alert\('Este movimiento ya pertenece al libro financiero/);
 });
-test('regresión: eliminación de movimiento ledger usa reversión atómica',()=>{
+test('regresión: movimientos legacy sin ledger no pueden eliminarse directamente',()=>{\n  const start=app.indexOf('async function deleteMovement');\n  const end=app.indexOf('function renderAccounts',start);\n  const block=app.slice(start,end);\n  assert.match(block,/!m\.ledgerEntryId/);\n  assert.match(block,/anterior al libro transaccional/);\n});\ntest('regresión: eliminación de movimiento ledger usa reversión atómica',()=>{
   assert.match(app,/PanoramaFinanceLedger\.reverse/);
   assert.match(migration,/create or replace function private\.reverse_finance_entry/);
   assert.match(migration,/reverses_entry_id/);
