@@ -1342,6 +1342,5 @@ if(sidebar){
     getState:function(){ return db; }
   };
 
-})();
 
 // Compatibility marker: async function openCorePayrollPayment
