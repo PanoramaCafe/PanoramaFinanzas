@@ -189,8 +189,18 @@ function editMovement(id){
   // Revert old balance, then validate/apply the new balance.
   if(m.type==='entrada'){if(oldAcc)oldAcc.balance-=Number(m.amount||0)}
   else if(m.type==='salida'||m.type==='compra_credito'){if(oldAcc)oldAcc.balance+=Number(m.amount||0)}
+  else if(m.type==='transferencia'){
+   const oldTo=getAccount(m.to);
+   if(oldAcc)oldAcc.balance+=Number(m.amount||0);
+   if(oldTo)oldTo.balance-=Number(m.amount||0);
+  }
   if(newType==='entrada'){
    newAcc.balance+=amount;
+  }else if(newType==='transferencia'){
+   const toId=prompt('ID de cuenta destino para esta transferencia',m.to||'');
+   const newTo=getAccount(toId);
+   if(!newTo||newTo.id===newAcc.id||Number(newAcc.balance)<amount){alert('La transferencia requiere una cuenta destino diferente y saldo suficiente.');return}
+   newAcc.balance-=amount;newTo.balance+=amount;m.to=newTo.id;
   }else if(newType==='salida'){
    if(newAcc.id!==oldAcc?.id && Number(newAcc.balance)<amount){
     if(m.type==='entrada'){if(oldAcc)oldAcc.balance+=Number(m.amount||0)}else if(oldAcc)oldAcc.balance-=Number(m.amount||0);
@@ -215,7 +225,12 @@ function deleteMovement(id){
  if(!confirm('¿Eliminar este movimiento? Se revertirá su efecto sobre la cuenta.'))return;
  const acc=getAccount(m.account||m.from);
  if(m.type==='entrada'){if(acc)acc.balance-=Number(m.amount||0)}
- else if(m.type==='salida'||m.type==='compra_credito'){if(acc)acc.balance+=Number(m.amount||0)}
+ else if(m.type==='salida'||m.type==='compra_credito'){if(acc)acc.balance+=Number(m.amount||0)} 
+ else if(m.type==='transferencia'){
+  const to=getAccount(m.to);
+  if(acc)acc.balance+=Number(m.amount||0);
+  if(to)to.balance-=Number(m.amount||0);
+ }
  db.moves=db.moves.filter(x=>x.id!==id);
  save();renderMoves();
 }
