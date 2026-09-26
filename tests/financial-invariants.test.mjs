@@ -134,12 +134,13 @@ test('regresión: eliminar transferencia revierte cuenta origen y destino', () =
   assert.match(block, /to\.balance-=Number\(m\.amount\|\|0\)/);
 });
 
-test('regresión: las transferencias no se editan parcialmente', () => {
+test('regresión: ningún movimiento puede editarse directamente', () => {
   const start = app.indexOf('function editMovement');
   const end = app.indexOf('\nfunction deleteMovement', start);
   const block = app.slice(start, end);
-  assert.match(block, /m\.type==='transferencia'/);
-  assert.match(block, /Las transferencias no se editan directamente/);
+  assert.match(block, /m\.ledgerEntryId/);
+  assert.match(block, /no se editan directamente/);
+  assert.doesNotMatch(block, /m\.amount=amount/);
 });
 
 test('regresión: Loyverse no puede crear una salida con saldo insuficiente', () => {
@@ -247,12 +248,11 @@ test('regresión: pagos de compromiso usan ledger y reversión transaccional',()
  assert.match(app,/PanoramaFinanceLedger\.reverseCommitmentPayment/);
  assert.match(app,/ledgerEntryId:id/);
 });
-test('regresión: pagos de proveedor o compromiso ya contabilizados no se editan directamente',()=>{
-  const start=app.indexOf('function editPayment');
-  const end=app.indexOf('\nasync function deletePayment',start);
-  const block=app.slice(start,end);
-  assert.match(block,/p\.ledgerEntryId/);
-  assert.match(block,/contabilizado en el libro financiero/);
+test('regresión: pagos de proveedor o compromiso usan reversión, no edición directa',()=>{
+  assert.doesNotMatch(app,/function editPayment\(/);
+  assert.match(app,/PanoramaFinanceLedger\.reverseProviderPayment/);
+  assert.match(app,/PanoramaFinanceLedger\.reverseCommitmentPayment/);
+  assert.match(app,/contabilizado en el libro financiero/);
 });
 test('regresión: proveedores y compromisos con operaciones financieras no se eliminan directamente',()=>{
   assert.match(app,/function deleteProvider\(i\).*hasPurchases/);
