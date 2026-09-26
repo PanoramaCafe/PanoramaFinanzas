@@ -381,3 +381,11 @@ test('regresión: el sincronizador define su guardia de estado vacío',()=>{
   assert.match(core,/\['accounts',\.\.\.arrays\]/);
   assert.match(core,/empty\(local\)&&!empty\(ack\)/);
 });
+
+
+test('movimientos manuales validan el estado antes del ledger y revierten si falla el guardado compatible',()=>{
+  assert.match(app,/const pre=window\.PanoramaFinanceIntegrity\?\.validate\(db/);
+  assert.match(app,/await window\.PanoramaCoreFinance\?\.sync\(\)/);
+  assert.match(app,/Se detuvo antes de tocar el libro financiero/);
+  assert.match(app,/Rollback: fallo al guardar estado compatible/);
+});
