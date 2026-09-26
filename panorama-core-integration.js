@@ -1,4 +1,4 @@
-/* Panorama Finanzas — sync v10: central master + safe polling + guaranteed live refresh */
+/* Panorama Finanzas — sync v11: central master + event-driven synchronization */
 (function(){
 'use strict';
 const cfg=window.PANORAMA_SUPABASE, ROW='finanzas-main', STORE='panorama_finanzas_pf_v1_010', ACK='panorama_finanzas_ack_v5', INIT='panorama_finanzas_initialized_v5', QUEUE='panorama_finanzas_pending_v5';
@@ -26,5 +26,5 @@ function getSummary(){return {source:'finanzas',ready:true,pending:!!read(QUEUE)
 window.PanoramaCoreFinance={syncState,remoteState:remote,sync,flush:sync,getSummary,receiveEvent:e=>({accepted:!!e}),publishEvent:e=>!!e,employees:()=>req('employees?active=eq.true&select=id,full_name,personal_data&order=full_name.asc'),pending:()=>req('payroll_payment_requests?status=eq.PENDING_PAYMENT&select=*,employees(full_name)&order=full_name.asc'),paymentHistory:()=>req('personal_payment_records?select=*&order=created_at.desc'),directPayments:()=>req('panorama_payroll_payments?select=*&order=paid_date.desc,created_at.desc')};
 window.addEventListener('online',sync);document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync()});
 async function boot(){try{const local=read(STORE),r=await remote(),remoteAt=r?.updated_at||'';if(!local||empty(local)){if(r?.data){applyRemote(clone(r.data),false);localStorage.setItem(INIT,'1')}else if(local){write(ACK,clone(local));localStorage.setItem(INIT,'1')}}else if(!read(INIT)){if(r?.data&&!empty(r.data))applyRemote(clone(r.data),false);else write(ACK,clone(local));localStorage.setItem(INIT,'1')}lastRemoteAt=remoteAt}catch(e){}finally{booting=false;sync()}}
-boot();setInterval(sync,1000);
+boot();
 })();

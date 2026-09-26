@@ -1,5 +1,5 @@
 /* Panorama Finanzas: direct access + authoritative Personal → Finanzas payroll reconciliation.
-   No Realtime/WebSockets. Finanzas polls the already-synchronized Personal master row directly.
+   Reconciliation is event-driven (startup/online/visibility) rather than continuous polling.
    Personal is the single source of truth for payroll movements. */
 (function(){
 'use strict';
@@ -32,7 +32,6 @@ async function reconcilePersonalPayments(){
    state.moves=next;
    window.PanoramaCoreFinance.syncState(state);
    await window.PanoramaCoreFinance.sync();
-   /* app.js keeps its own in-memory state; refresh automatically only after a bridge change. */
    window.dispatchEvent(new Event('panorama-finanzas-reload'));
    setTimeout(()=>location.reload(),120);
   }
@@ -40,7 +39,6 @@ async function reconcilePersonalPayments(){
 }
 window.PanoramaFinanceImportPersonal=reconcilePersonalPayments;
 setTimeout(reconcilePersonalPayments,150);
-setInterval(reconcilePersonalPayments,350);
 window.addEventListener('online',reconcilePersonalPayments);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)reconcilePersonalPayments()});
 })();
