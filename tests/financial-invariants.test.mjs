@@ -223,6 +223,11 @@ test('regresión: pago de nómina core conserva referencia al ledger',()=>{
   const end=app.indexOf("window.addEventListener('panorama-core-finance-ready'",start);
   assert.match(app.slice(start,end),/ledgerEntryId:movementId/);
 });
+test('regresión: pagos de compromiso usan ledger y reversión transaccional',()=>{
+ assert.match(app,/PanoramaFinanceLedger\.postCommitmentPayment/);
+ assert.match(app,/PanoramaFinanceLedger\.reverseCommitmentPayment/);
+ assert.match(app,/ledgerEntryId:id/);
+});
 test('regresión: pagos de proveedor o compromiso ya contabilizados no se editan directamente',()=>{
   const start=app.indexOf('function editPayment');
   const end=app.indexOf('\nasync function deletePayment',start);
