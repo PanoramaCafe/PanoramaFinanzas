@@ -588,13 +588,10 @@ function applyExternalFinancialEvent(payload){
  const direction=p.direction||'out';
  const externalId=String(p.externalId||'').trim();
  if(externalId&&db.moves.some(m=>String(m.origin||'')===source&&String(m.externalId||'')===externalId))throw new Error('Este movimiento externo ya fue registrado.');
- if(direction==='out'){
-  if(acc.balance<amount)throw new Error('Saldo insuficiente');
-  acc.balance-=amount;
- }else{
-  acc.balance+=amount;
- }
+ if(direction==='out'&&acc.balance<amount)throw new Error('Saldo insuficiente');
  const id=registerIntegrationEvent(p);
+ if(direction==='out')acc.balance-=amount;
+ else acc.balance+=amount;
  db.moves.push({
   id:uid(),created:Date.now(),origin:source,externalId:p.externalId||id,
   type:direction==='out'?'salida':'entrada',date:p.date||today(),
