@@ -254,3 +254,26 @@ test('regresión: registros legacy de Loyverse no se eliminan como si fueran led
   assert.match(block,/!x\.ledgerEntryId/);
   assert.match(block,/anterior al libro transaccional/);
 });
+
+
+test('regresión: los retiros de Cierre POS usan transferencia transaccional',()=>{
+  assert.match(app,/await window\.PanoramaFinanceLedger\.transfer/);
+  assert.match(app,/source:'pos_close'/);
+  assert.match(app,/withdrawalLedgerEntryId/);
+});
+
+test('regresión: eliminar un Cierre POS revierte el ledger antes de quitar el movimiento local',()=>{
+  const start=app.indexOf("document.querySelectorAll('[data-del-pos]')");
+  const end=app.indexOf("function openPOSClose",start);
+  const block=app.slice(start,end);
+  assert.match(block,/await window\.PanoramaFinanceLedger\.reverse/);
+  assert.match(block,/!c\.withdrawalLedgerEntryId/);
+  assert.match(block,/anterior al libro transaccional/);
+});
+
+test('regresión: el Cierre POS sólo muta saldos locales después de confirmar PostgreSQL',()=>{
+  const start=app.indexOf("form.addEventListener('submit',async function(e)",app.indexOf('function openPOSClose'));
+  const end=app.indexOf("function openCategory",start);
+  const block=app.slice(start,end);
+  assert.ok(block.indexOf('await window.PanoramaFinanceLedger.transfer') < block.indexOf('pos.balance-=withdrawal'));
+});
