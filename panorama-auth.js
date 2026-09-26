@@ -93,6 +93,38 @@ window.PanoramaAuth={
   requestAccess:()=>{renderAuth();},
   directAccess:false
 };
+async function reconcilePersonalPayments(){
+ if(!session||!navigator.onLine||!cfg?.url||!cfg?.key||!window.PanoramaCoreFinance)return;
+ try{
+   const h=headers();
+   const rr=await fetch(cfg.url+'/rest/v1/panorama_personal_state?id=eq.personal-main&select=data',{headers:{...h,'Cache-Control':'no-cache'},cache:'no-store'});
+   if(!rr.ok)throw new Error(await rr.text());
+   const master=(await rr.json())[0]?.data||{};
+   const employees=new Map((master?.employees||[]).map(e=>[String(e.id),e]));
+   const rows=(master?.payments||[]).filter(p=>p&&p.id&&p.employeeId&&Number.isFinite(Number(p.amount))).map(p=>({p,e:employees.get(String(p.employeeId))||{}}));
+   const stateRow=await window.PanoramaCoreFinance.remoteState();
+   const state=stateRow?.data;if(!state||!Array.isArray(state.moves))return;
+   const wanted=new Set(rows.map(({p})=>String(p.id)));
+   const next=state.moves.filter(m=>m.source!=='personal'||!m.personalPaymentId||wanted.has(String(m.personalPaymentId)));
+   const ids=new Set(next.map(m=>String(m.id)));
+   for(const {p,e} of rows){
+     const id='personal-'+p.id;
+     if(ids.has(id))continue;
+     next.unshift({id,date:p.paidDate||p.date||new Date().toISOString().slice(0,10),type:'salida',concept:'Nómina — '+String(e.name||p.employeeName||'Personal'),category:'nomina',amount:Number(p.amount),source:'personal',personalPaymentId:String(p.id),employeeId:String(p.employeeId),periodStart:p.periodStart||null,periodEnd:p.periodEnd||null,note:p.note||'',account:p.account||null});
+   }
+   if(JSON.stringify(next)!==JSON.stringify(state.moves)){
+     state.moves=next;
+     window.PanoramaCoreFinance.syncState(state);
+     await window.PanoramaCoreFinance.sync();
+     window.dispatchEvent(new Event('panorama-finanzas-reload'));
+   }
+ }catch(e){console.warn('Reconciliación Personal→Finanzas pendiente',e)}
+}
+window.PanoramaFinanceImportPersonal=reconcilePersonalPayments;
+window.addEventListener('panorama-auth-ready',()=>reconcilePersonalPayments());
+window.addEventListener('online',reconcilePersonalPayments);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)reconcilePersonalPayments()});
+setTimeout(()=>reconcilePersonalPayments(),500);
 window.addEventListener('DOMContentLoaded',()=>{if(!session)renderAuth()},{once:true});
 init();
 })();
