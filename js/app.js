@@ -1238,7 +1238,15 @@ if(sidebar){
       return remoteData;
     }catch(e){
       console.warn('Panorama Finanzas: no se pudo leer la nube',e);
-      if(status)status.textContent='⚠️ Sin sincronizar';
+      const msg=String(e?.message||e?.body||'');
+      const code=String(e?.code||'');
+      const hasSession=!!window.PanoramaAuth?.session;
+      let label='⚠️ Error de sincronización';
+      if(!navigator.onLine)label='⚠️ Sin conexión';
+      else if(!hasSession||/AUTH_REQUIRED|jwt|unauthori[sz]ed|401/i.test(msg+' '+code))label='🔐 Sesión requerida';
+      else if(/ACCESS_DENIED|42501|403/i.test(msg+' '+code))label='🔒 Sin acceso a finanzas';
+      else if(/STATE_NOT_FOUND|Nube no devolvió/i.test(msg+' '+code))label='❌ Nube sin estado';
+      if(status)status.textContent=label;
       return null;
     }finally{pullBusy=false}
   }
