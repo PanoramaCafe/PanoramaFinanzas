@@ -99,7 +99,7 @@ test('boot recupera una caché local inválida desde la nube sin sobrescribirla'
 
 
 test('integridad permite saldos negativos en cuentas digitales declaradas como Cuenta digital',()=>{
- const state=JSON.parse(JSON.stringify(baseState));
+ const state=base();
  state.accounts[0].type='Cuenta digital'; state.accounts[0].balance=-125.5;
  assert.equal(validate(state,{silent:true}).ok,true);
 });
