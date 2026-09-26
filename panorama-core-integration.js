@@ -11,7 +11,7 @@ const clone=x=>x==null?x:JSON.parse(JSON.stringify(x));
 const read=k=>{try{return JSON.parse(localStorage.getItem(k)||'null')}catch{return null}};
 const write=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
 const valid=x=>x&&typeof x==='object'&&!Array.isArray(x);
-const empty=s=>!valid(s)||arrays.every(k=>!Array.isArray(s[k])||s[k].length===0);
+const empty=s=>!valid(s)||['accounts',...arrays].every(k=>!Array.isArray(s[k])||s[k].length===0);
 const map=a=>{const m=new Map();(a||[]).forEach(x=>{if(x?.id!=null)m.set(String(x.id),x)});return m};
 async function req(path,opt={}){const r=await fetch(base+path,{...opt,headers:{...authHeaders(),...(opt.headers||{})},cache:'no-store'});const t=await r.text();if(!r.ok)throw Error(t||r.statusText);return t?JSON.parse(t):null}
 async function remote(){const r=await req('panorama_finanzas_state?id=eq.'+encodeURIComponent(ROW)+'&select=data,updated_at,revision');return r?.[0]||null}
