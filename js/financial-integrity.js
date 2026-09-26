@@ -3,6 +3,7 @@
 const ARRAY_FIELDS=['moves','providers','providerPayments','commitments','commitmentPayments','payrollEmployees','payrollPeriods','fixedPayments','cuts','reconciliations','posCloses','adjustments','loyverseSummaries','loyverseTreasuryExpenses'];
 function finitePositive(v){return Number.isFinite(Number(v))&&Number(v)>0}
 function finiteNumber(v){return Number.isFinite(Number(v))}
+function isDigitalAccountType(type){const t=String(type||'').trim().toLowerCase();return t==='digital'||t==='cuenta digital'||t.includes('digital')}
 function validate(state,options={}){
  const scopeAccounts=Array.isArray(options.accountIds)?new Set(options.accountIds.map(String)):null;
  const errors=[];
@@ -12,7 +13,7 @@ function validate(state,options={}){
  for(const k of ['entrada','salida','compromiso'])if(!Array.isArray(state.categories?.[k]))errors.push('Falta categories.'+k+'.');
  for(const k of ARRAY_FIELDS)if(!Array.isArray(state[k]))errors.push(k+' debe ser un arreglo.');
  const ids=new Set();
- for(const a of state.accounts||[]){const id=String(a?.id||'');if(!id)errors.push('Cuenta sin id.');else if(ids.has(id))errors.push('ID de cuenta duplicado: '+id+'.');else ids.add(id);if((!scopeAccounts||scopeAccounts.has(id))&&(!finiteNumber(a?.balance)||(Number(a.balance)<0&&String(a?.type||'').toLowerCase()!=='digital')))errors.push('Saldo inválido en cuenta '+(id||'(sin id)')+'.');}
+ for(const a of state.accounts||[]){const id=String(a?.id||'');if(!id)errors.push('Cuenta sin id.');else if(ids.has(id))errors.push('ID de cuenta duplicado: '+id+'.');else ids.add(id);if((!scopeAccounts||scopeAccounts.has(id))&&(!finiteNumber(a?.balance)||(Number(a.balance)<0&&!isDigitalAccountType(a?.type))))errors.push('Saldo inválido en cuenta '+(id||'(sin id)')+'.');}
  const accountId=id=>ids.has(String(id||''));
  const checkUnique=(arr,name)=>{const seen=new Set();for(const x of arr||[]){const id=String(x?.id||'');if(!id)errors.push(name+': registro sin id.');else if(seen.has(id))errors.push(name+': ID duplicado '+id+'.');else seen.add(id)}};
  for(const k of ARRAY_FIELDS)checkUnique(state[k],k);
