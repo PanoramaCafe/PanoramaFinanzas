@@ -184,7 +184,12 @@ test('regresión: movimientos del ledger no se editan directamente',()=>{
   assert.match(app,/if\(m\.ledgerEntryId\)\{alert\('Este movimiento ya pertenece al libro financiero/);
 });
 test('regresión: movimientos legacy sin ledger no pueden eliminarse directamente',()=>{
-  const start=app.indexOf('async function deleteMovement');\n  const end=app.indexOf('function renderAccounts',start);\n  const block=app.slice(start,end);\n  assert.match(block,/!m\.ledgerEntryId/);\n  assert.match(block,/anterior al libro transaccional/);\n});\ntest('regresión: eliminación de movimiento ledger usa reversión atómica',()=>{
+  const start=app.indexOf('async function deleteMovement');
+  const end=app.indexOf('function renderAccounts',start);
+  const block=app.slice(start,end);
+  assert.match(block,/!m\.ledgerEntryId/);
+  assert.match(block,/anterior al libro transaccional/);
+});\ntest('regresión: eliminación de movimiento ledger usa reversión atómica',()=>{
   assert.match(app,/PanoramaFinanceLedger\.reverse/);
   assert.match(migration,/create or replace function private\.reverse_finance_entry/);
   assert.match(migration,/reverses_entry_id/);
@@ -209,8 +214,14 @@ test('regresión: el saldo de una cuenta existente no se edita directamente',()=
 
 
 test('regresión: nómina local usa el ledger transaccional',()=>{
-  assert.match(app,/PanoramaFinanceLedger\\.postEntry/);\n  assert.match(app,/source:'payroll'/);\n  assert.match(app,/ledgerEntryId:movementId/);\n});\ntest('regresión: pago de nómina core conserva referencia al ledger',()=>{
-  const start=app.indexOf('function openCorePayrollPayment');\n  const end=app.indexOf("window.addEventListener('panorama-core-finance-ready'",start);\n  assert.match(app.slice(start,end),/ledgerEntryId:movementId/);\n});\ntest('regresión: operaciones de proveedores usan RPC transaccional',()=>{
+  assert.match(app,/PanoramaFinanceLedger\\.postEntry/);
+  assert.match(app,/source:'payroll'/);
+  assert.match(app,/ledgerEntryId:movementId/);
+});\ntest('regresión: pago de nómina core conserva referencia al ledger',()=>{
+  const start=app.indexOf('function openCorePayrollPayment');
+  const end=app.indexOf("window.addEventListener('panorama-core-finance-ready'",start);
+  assert.match(app.slice(start,end),/ledgerEntryId:movementId/);
+});\ntest('regresión: operaciones de proveedores usan RPC transaccional',()=>{
   assert.match(app,/PanoramaFinanceLedger\.postProviderPurchase/);
   assert.match(app,/PanoramaFinanceLedger\.postProviderPayment/);
   assert.match(app,/PanoramaFinanceLedger\.reverseProviderPurchase/);
