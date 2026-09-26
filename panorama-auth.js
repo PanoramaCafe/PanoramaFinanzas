@@ -5,7 +5,6 @@
 (function(){
 'use strict';
 const cfg=window.PANORAMA_SUPABASE;
-const storageKey='panorama_finanzas_auth_session_v1';
 let session=null, user=null, readyResolve;
 const ready=new Promise(resolve=>{readyResolve=resolve});
 
@@ -26,8 +25,6 @@ function headers(){
 function setSession(next){
   session=next||null;
   user=session?.user||null;
-  if(session)localStorage.setItem(storageKey,JSON.stringify(session));
-  else localStorage.removeItem(storageKey);
   renderAuth();
   if(session){
     readyResolve(session);
