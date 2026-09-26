@@ -430,8 +430,8 @@ function renderPayments(){
   const cls=x.kind==='purchase'&&x.mode==='credit'?'':'red';
   const accountText=x.mode==='credit'?'Sin salida de dinero':(acc?acc.name:'Cuenta no disponible');
   const actions=x.kind==='purchase'
-    ? '<button class="btn" data-edit-provider-purchase="'+x.id+'">Editar</button><button class="btn danger" data-del-provider-purchase="'+x.id+'">Eliminar</button>'
-    : '<button class="btn" data-edit-provider-payment="'+x.id+'">Editar</button><button class="btn danger" data-del-provider-payment="'+x.id+'">Eliminar</button>';
+    ? '<button class="btn danger" data-del-provider-purchase="'+x.id+'">Revertir</button>'
+    : '<button class="btn danger" data-del-provider-payment="'+x.id+'">Revertir</button>';
   return '<div class="row"><div><b>'+esc(prov?prov.name:'Proveedor eliminado')+'</b><div class="muted">'+esc(title)+' · '+esc(x.date)+' · '+esc(accountText)+(x.note?' · '+esc(x.note):'')+'</div></div><div class="actions"><strong class="'+cls+'">'+sign+money(x.amount)+'</strong>'+actions+'</div></div>';
  }).join('')||'<div class="empty">Sin operaciones de proveedores.</div>';
 
@@ -440,9 +440,7 @@ function renderPayments(){
   return '<div class="row"><div><b>'+esc(c?c.name:'Compromiso eliminado')+'</b><div class="muted">'+p.date+' · '+esc(acc?acc.name:'')+' · '+esc(p.note||'')+'</div></div><div class="actions"><strong class="red">−'+money(p.amount)+'</strong><button class="btn" data-edit-commitment-payment="'+p.id+'">Editar</button><button class="btn danger" data-del-commitment-payment="'+p.id+'">Eliminar</button></div></div>';
  }).join('')||'<div class="empty">Sin pagos de compromisos.</div>';
 
- document.querySelectorAll('[data-edit-provider-purchase]').forEach(function(b){b.addEventListener('click',function(){editProviderPurchase(b.dataset.editProviderPurchase)})});
  document.querySelectorAll('[data-del-provider-purchase]').forEach(function(b){b.addEventListener('click',function(){deleteProviderPurchase(b.dataset.delProviderPurchase)})});
- document.querySelectorAll('[data-edit-provider-payment]').forEach(function(b){b.addEventListener('click',function(){editPayment('provider',b.dataset.editProviderPayment)})});
  document.querySelectorAll('[data-del-provider-payment]').forEach(function(b){b.addEventListener('click',function(){deletePayment('provider',b.dataset.delProviderPayment)})});
  document.querySelectorAll('[data-edit-commitment-payment]').forEach(function(b){b.addEventListener('click',function(){editPayment('commitment',b.dataset.editCommitmentPayment)})});
  document.querySelectorAll('[data-del-commitment-payment]').forEach(function(b){b.addEventListener('click',function(){deletePayment('commitment',b.dataset.delCommitmentPayment)})});
@@ -762,18 +760,18 @@ function editProviderPurchase(id){
   save();renderProviders();renderPayments();closeModal();
  });
 }
-function deleteProviderPurchase(id){
+async function deleteProviderPurchase(id){
  const x=(db.providerPurchases||[]).find(a=>a.id===id);if(!x)return;
  const p=db.providers.find(a=>a.id===x.providerId);
- if(!confirm('¿Eliminar esta compra? Se revertirá su efecto financiero.'))return;
- if(x.mode==='cash'){
-  const acc=getAccount(x.accountId);if(acc)acc.balance+=Number(x.amount||0);
- }else if(p){
-  p.creditBalance=Math.max(0,Number(p.creditBalance||0)-Number(x.amount||0));
- }
- db.providerPurchases=db.providerPurchases.filter(a=>a.id!==id);
- db.moves=db.moves.filter(m=>!(m.linkedType==='providerPurchase'&&m.linkedId===id));
- save();renderProviders();renderPayments();
+ if(!confirm('¿Revertir esta compra? Se generará la reversión financiera correspondiente.'))return;
+ try{
+  await window.PanoramaFinanceLedger.reverseProviderPurchase({id,reversalId:uid(),reason:'Reversión de compra a proveedor'});
+  if(x.mode==='cash'){const acc=getAccount(x.accountId);if(acc)acc.balance+=Number(x.amount||0)}
+  else if(p){p.creditBalance=Math.max(0,Number(p.creditBalance||0)-Number(x.amount||0))}
+  db.providerPurchases=db.providerPurchases.filter(a=>a.id!==id);
+  db.moves=db.moves.filter(m=>!(m.linkedType==='providerPurchase'&&m.linkedId===id));
+  save();renderProviders();renderPayments();
+ }catch(err){console.error(err);alert('No se pudo revertir la compra en el libro financiero.\n\n'+err.message)}
 }
 function openProviderPurchase(providerId){
  const p=db.providers.find(x=>x.id===providerId);if(!p)return;
