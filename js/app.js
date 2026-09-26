@@ -29,6 +29,7 @@ const DEFAULT={
 };
 
 let db=load();
+let lastGoodState=clone(db);
 
 function clone(o){return JSON.parse(JSON.stringify(o))}
 function load(){
@@ -47,9 +48,21 @@ function load(){
  }catch(e){return clone(DEFAULT)}
 }
 function save(){
-  localStorage.setItem(STORAGE,JSON.stringify(db));
+  const candidate=clone(db);
+  const check=window.PanoramaFinanceIntegrity?.validate(candidate,{silent:true});
+  if(check && !check.ok){
+    console.error('Panorama Finanzas: guardado rechazado por integridad',check.errors);
+    db=clone(lastGoodState);
+    renderAll();
+    alert('No se guardaron los cambios porque el estado financiero resultaría inconsistente.\n\n'+check.errors.slice(0,5).join('\n'));
+    return false;
+  }
+  localStorage.setItem(STORAGE,JSON.stringify(candidate));
+  db=candidate;
+  lastGoodState=clone(candidate);
   window.PanoramaCoreFinance?.syncState(db);
   renderAll();
+  return true;
 }
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]})}
@@ -1307,48 +1320,35 @@ if(sidebar){
   // Canal de entrada: aplica estado remoto sin volver a disparar save().
   function applyRemoteState(remoteData){
     if(!remoteData || typeof remoteData!=='object' || Array.isArray(remoteData) || !Object.keys(remoteData).length) return false;
+    const check=window.PanoramaFinanceIntegrity?.validate(remoteData,{silent:true});
+    if(check && !check.ok){console.warn('Panorama Finanzas: estado remoto rechazado',check.errors);return false}
     if(JSON.stringify(db)===JSON.stringify(remoteData)) return false;
-    db=remoteData;
+    db=clone(remoteData);
+    lastGoodState=clone(db);
     localStorage.setItem(STORAGE,JSON.stringify(db));
     renderAll();
     return true;
   }
 
-  async function pullRemoteState(){
-    try{
-      const remote=await window.PanoramaCoreFinance?.remoteState?.();
-      if(remote?.data && Object.keys(remote.data).length) applyRemoteState(remote.data);
-      return remote||null;
-    }catch(e){
-      console.warn('Panorama Finanzas: no se pudo recibir estado remoto',e);
-      return null;
-    }
-  }
-
-  // Sincronización dirigida: arranque, conexión recuperada, visibilidad y eventos explícitos.
-  // Evita polling periódico que genera tráfico innecesario y posibles carreras de estado.
+  // Toda recepción remota pasa por el motor de merge de Panorama Core.
+  // Nunca reemplaza directamente el estado local, evitando perder cambios pendientes.
   let pullBusy=false;
   async function pullRemoteStateSafe(){
     if(pullBusy || !navigator.onLine)return null;
     pullBusy=true;
-    try{return await pullRemoteState();}
-    finally{pullBusy=false;}
+    try{return await window.PanoramaCoreFinance?.sync?.()||null;}
+    catch(e){console.warn('Panorama Finanzas: no se pudo sincronizar',e);return null}
+    finally{pullBusy=false}
   }
 
-  window.addEventListener('panorama-core-finance-ready', async function(){
-    const remote=await pullRemoteStateSafe();
-    if(!remote?.data || !Object.keys(remote.data).length){
-      window.PanoramaCoreFinance?.syncState(db);
-    }
-  });
-
+  window.addEventListener('panorama-core-finance-ready',pullRemoteStateSafe);
   window.addEventListener('online',pullRemoteStateSafe);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)pullRemoteStateSafe()});
-  window.addEventListener('panorama-finanzas-sync',pullRemoteStateSafe);
+  window.addEventListener('panorama-finanzas-sync',ev=>{if(ev.detail?.status==='pending')pullRemoteStateSafe()});
 
   window.PanoramaFinanceApp={
     applyRemoteState,
-    pullRemoteState,
+    pullRemoteState:pullRemoteStateSafe,
     getState:function(){ return db; }
   };
 
