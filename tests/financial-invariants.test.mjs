@@ -32,6 +32,17 @@ test('eliminar una entrada revierte exactamente su efecto', () => {
   assert.equal(balance, before);
 });
 
+test('eliminar una transferencia revierte exactamente ambos saldos', () => {
+  const state = {from:1000,to:250};
+  const amount = 125;
+  state.from -= amount;
+  state.to += amount;
+  state.from += amount;
+  state.to -= amount;
+  assert.equal(state.from,1000);
+  assert.equal(state.to,250);
+});
+
 test('eliminar una salida revierte exactamente su efecto', () => {
   const before = 800;
   const amount = 175.50;
@@ -115,6 +126,24 @@ test('regresión: pagos fijos revierten el movimiento anterior al editar un pago
   assert.match(block, /const wasPaid=x\.status==='pagado'/);
   assert.match(block, /oldAcc\.balance\+=oldAmount/);
   assert.match(block, /sourceRecordId===x\.id&&m\.origin==='pagos_fijos'/);
+});
+
+test('regresión: eliminar transferencia revierte cuenta origen y destino', () => {
+  const start = app.indexOf('function deleteMovement');
+  const end = app.indexOf('\n\nfunction renderAccounts', start);
+  const block = app.slice(start, end);
+  assert.match(block, /m\.type==='transferencia'/);
+  assert.match(block, /getAccount\(m\.to\)/);
+  assert.match(block, /acc\.balance\+=Number\(m\.amount\|\|0\)/);
+  assert.match(block, /to\.balance-=Number\(m\.amount\|\|0\)/);
+});
+
+test('regresión: las transferencias no se editan parcialmente', () => {
+  const start = app.indexOf('function editMovement');
+  const end = app.indexOf('\nfunction deleteMovement', start);
+  const block = app.slice(start, end);
+  assert.match(block, /m\.type==='transferencia'/);
+  assert.match(block, /Las transferencias no se editan directamente/);
 });
 
 test('regresión: respaldo JSON sigue separado de exportación XLSX', () => {
