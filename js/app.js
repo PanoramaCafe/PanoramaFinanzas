@@ -1078,7 +1078,7 @@ function resultRange(){
 function loyverseTreasuryTotal(start,end){
  return (db.loyverseTreasuryExpenses||[]).filter(x=>(!start||x.date>=start)&&(!end||x.date<=end)).reduce((s,x)=>s+Number(x.amount||0),0);
 }
-function importLoyverseTreasuryExpense(data){
+async function importLoyverseTreasuryExpense(data){
  const id=String(data.id||data.externalId||''); if(!id)return {ok:false,error:'Falta identificador de Loyverse.'};
  db.loyverseTreasuryExpenses=db.loyverseTreasuryExpenses||[];
  if(db.loyverseTreasuryExpenses.some(x=>String(x.externalId)===id))return {ok:false,duplicate:true};
@@ -1086,13 +1086,17 @@ function importLoyverseTreasuryExpense(data){
  const acc=getAccount(String(data.accountId||''));
  if(!acc)return {ok:false,error:'Una salida financiera de Loyverse requiere una cuenta válida.'};
  if(Number(acc.balance)<amount)return {ok:false,error:'La cuenta seleccionada no tiene saldo suficiente.'};
- const rec={id:uid(),externalId:id,source:'loyverse_treasury',date:String(data.date||today()),amount,concept:String(data.concept||data.name||'Salida de tesorería Loyverse'),category:String(data.category||'tesoreria_loyverse'),note:String(data.note||''),accountId:acc?acc.id:null,created:Date.now()};
- db.loyverseTreasuryExpenses.push(rec);
- if(acc){
+ const rec={id:uid(),externalId:id,source:'loyverse_treasury',date:String(data.date||today()),amount,concept:String(data.concept||data.name||'Salida de tesorería Loyverse'),category:String(data.category||'tesoreria_loyverse'),note:String(data.note||''),accountId:acc.id,created:Date.now(),ledgerEntryId:null};
+ try{
+  await window.PanoramaFinanceLedger.postLoyverseTreasuryExpense({id:rec.id,externalId:id,date:rec.date,amount,accountId:acc.id,concept:rec.concept,category:rec.category,note:rec.note});
+  rec.ledgerEntryId=rec.id;
+  db.loyverseTreasuryExpenses.push(rec);
   acc.balance-=amount;
-  db.moves.push({id:uid(),created:Date.now(),type:'salida',date:rec.date,amount,concept:rec.concept,category:'tesoreria_loyverse',from:acc.id,to:null,account:acc.id,note:rec.note,linkedType:'loyverseTreasury',linkedId:rec.id,externalId:id,source:'Loyverse'});
+  db.moves.push({id:rec.id,ledgerEntryId:rec.id,created:Date.now(),type:'salida',date:rec.date,amount,concept:rec.concept,category:'tesoreria_loyverse',from:acc.id,to:null,account:acc.id,note:rec.note,linkedType:'loyverseTreasury',linkedId:rec.id,externalId:id,source:'Loyverse'});
+  return {ok:true,record:rec};
+ }catch(err){
+  return {ok:false,error:err.message||'No se pudo registrar la salida de tesorería en el libro financiero.'};
  }
- return {ok:true,record:rec};
 }
 
 
@@ -1100,11 +1104,12 @@ function importLoyverseTreasuryExpense(data){
 function openLoyverseTreasuryImportTest(){
  openModal('<h2>Importar salida de tesorería Loyverse</h2><div class="notice">Esta herramienta es de prueba. La conexión automática con la API de Loyverse se añadirá después. Cada registro requiere un ID externo para evitar duplicados.</div><form id="loyverseTreasuryTestForm"><div class="formGrid"><div class="field"><label>ID Loyverse</label><input class="input" name="externalId" placeholder="Ej. cashout_001" required></div><div class="field"><label>Fecha</label><input class="input" name="date" type="date" value="'+today()+'" required></div><div class="field"><label>Importe</label><input class="input" name="amount" type="number" min="0.01" step="0.01" required></div><div class="field"><label>Cuenta / caja</label><select class="select" name="account">'+accountOptions()+'</select></div><div class="field"><label>Concepto</label><input class="input" name="concept" placeholder="Ej. Tomate" required></div><div class="field full"><label>Nota</label><input class="input" name="note"></div></div><div class="modalActions"><button type="button" class="btn" id="cancelLoyverseTreasury">Cancelar</button><button class="btn primary">Importar</button></div></form>');
  document.getElementById('cancelLoyverseTreasury').addEventListener('click',closeModal);
- document.getElementById('loyverseTreasuryTestForm').addEventListener('submit',function(e){
-  e.preventDefault();const d=new FormData(e.target),r=importLoyverseTreasuryExpense({id:d.get('externalId'),date:d.get('date'),amount:d.get('amount'),concept:d.get('concept'),note:d.get('note'),accountId:d.get('account')});
+ document.getElementById('loyverseTreasuryTestForm').addEventListener('submit',async function(e){
+  e.preventDefault();const d=new FormData(e.target);
+  const r=await importLoyverseTreasuryExpense({id:d.get('externalId'),date:d.get('date'),amount:d.get('amount'),concept:d.get('concept'),note:d.get('note'),accountId:d.get('account')});
   if(r.duplicate){alert('Ese movimiento de Loyverse ya está importado.');return}
   if(!r.ok){alert(r.error||'No se pudo importar.');return}
-  save();renderResult();closeModal();
+  if(save())closeModal();
  });
 }
 
@@ -1114,13 +1119,17 @@ function renderLoyverseTreasuryPanel(start,end){
  const rows=(db.loyverseTreasuryExpenses||[]).filter(x=>(!start||x.date>=start)&&(!end||x.date<=end)).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
  el.innerHTML='<div class="toolbar"><div><h2>Salidas de tesorería · Loyverse</h2><div class="muted">Gastos registrados en Gestión de tesorería de Loyverse. Al importarlos, se reflejan como salidas financieras y no deben capturarse nuevamente.</div></div><button class="btn" data-action="import-loyverse-treasury">＋ Importar salida</button></div>'+
  (rows.length?rows.map(x=>'<div class="row"><div><b>'+esc(x.concept)+'</b><div class="muted">'+esc(x.date)+(x.note?' · '+esc(x.note):'')+' · Origen: Loyverse</div></div><div class="actions"><strong class="red">−'+money(x.amount)+'</strong><button class="btn danger" data-del-loy-treasury="'+x.id+'">Eliminar</button></div></div>').join(''):'<div class="empty">Sin salidas de tesorería de Loyverse en el periodo.</div>');
- document.querySelectorAll('[data-del-loy-treasury]').forEach(b=>b.addEventListener('click',function(){
+ document.querySelectorAll('[data-del-loy-treasury]').forEach(b=>b.addEventListener('click',async function(){
   const x=(db.loyverseTreasuryExpenses||[]).find(a=>a.id===b.dataset.delLoyTreasury);if(!x)return;
-  if(!confirm('¿Eliminar esta salida importada de Loyverse? Se revertirá su efecto financiero.'))return;
-  const acc=getAccount(x.accountId);if(acc)acc.balance+=Number(x.amount||0);
-  db.moves=db.moves.filter(m=>!(m.linkedType==='loyverseTreasury'&&m.linkedId===x.id));
-  db.loyverseTreasuryExpenses=db.loyverseTreasuryExpenses.filter(a=>a.id!==x.id);
-  save();renderResult();
+  if(!x.ledgerEntryId){alert('Este registro de Loyverse es anterior al libro transaccional y no puede eliminarse desde aquí sin normalizarlo primero.');return}
+  if(!confirm('¿Revertir esta salida importada de Loyverse? Se revertirá su efecto financiero en el libro.'))return;
+  try{
+   await window.PanoramaFinanceLedger.reverseLoyverseTreasuryExpense({id:x.id,reversalId:uid(),reason:'Reversión de salida de tesorería Loyverse'});
+   const acc=getAccount(x.accountId);if(acc)acc.balance+=Number(x.amount||0);
+   db.moves=db.moves.filter(m=>!(m.linkedType==='loyverseTreasury'&&m.linkedId===x.id));
+   db.loyverseTreasuryExpenses=db.loyverseTreasuryExpenses.filter(a=>a.id!==x.id);
+   if(save())renderResult();
+  }catch(err){console.error(err);alert('No se pudo revertir la salida de tesorería Loyverse en el libro financiero.\\n\\n'+err.message)}
  }));
 }
 
