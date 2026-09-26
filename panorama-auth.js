@@ -84,6 +84,7 @@ async function init(){
 window.PanoramaAuth={
   ready,
   headers,
+  rpc:async(name,args={})=>{const c=client();if(!c)throw new Error('Supabase Auth no está disponible.');const res=await c.rpc(name,args);if(res.error)throw res.error;return res.data},
   get session(){return session},
   get user(){return user},
   signOut:async()=>{const c=client();if(c)await c.auth.signOut();setSession(null);},
