@@ -192,3 +192,16 @@ test('regresión: adaptador expone reversión',()=>{
   assert.match(ledger,/async function reverse/);
   assert.match(ledger,/window\.PanoramaFinanceLedger=\{postEntry,transfer,reverse\}/);
 });
+
+
+test('regresión: los ajustes de saldo usan el ledger transaccional',()=>{
+  assert.match(app,/PanoramaFinanceLedger\.adjustBalance/);
+  assert.match(app,/ledgerEntryId:id/);
+  assert.match(ledger,/adjustBalance/);
+  assert.match(migration,/adjust_finance_account_balance/);
+});
+
+test('regresión: el saldo de una cuenta existente no se edita directamente',()=>{
+  assert.match(app,/existing\?'disabled':''/);
+  assert.doesNotMatch(app,/existing\.balance=balance/);
+});
