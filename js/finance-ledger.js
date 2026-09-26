@@ -38,7 +38,10 @@
       p_concept:String(concept),p_source:String(source),p_external_id:externalId,p_metadata:metadata
     });
   }
-  window.PanoramaFinanceLedger={postEntry,transfer,reverse,adjustBalance,upsertProvider,postProviderPurchase,postProviderPayment,reverseProviderPurchase,reverseProviderPayment,upsertCommitment,postCommitmentPayment,reverseCommitmentPayment,archiveCommitment};
+  async function upsertFixedPayment({id,concept,amount,date,status='pendiente',accountId=null,note=''}){ return rpc('upsert_finance_fixed_payment',{p_payment_id:String(id),p_concept:String(concept),p_amount:Number(amount),p_occurred_on:date,p_status:String(status),p_account_id:accountId?String(accountId):null,p_note:String(note)}); }
+  async function payFixedPayment({id}){ return rpc('pay_finance_fixed_payment',{p_payment_id:String(id)}); }
+  async function reverseFixedPayment({id,reversalId,reason='Reversión de pago fijo'}){ return rpc('reverse_finance_fixed_payment',{p_payment_id:String(id),p_reversal_id:String(reversalId),p_reason:String(reason)}); }
+  window.PanoramaFinanceLedger={postEntry,transfer,reverse,adjustBalance,upsertProvider,postProviderPurchase,postProviderPayment,reverseProviderPurchase,reverseProviderPayment,upsertCommitment,postCommitmentPayment,reverseCommitmentPayment,archiveCommitment,upsertFixedPayment,payFixedPayment,reverseFixedPayment};
 
   const escUi=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const uidUi=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
