@@ -65,8 +65,8 @@ test('la recepción remota del módulo UI no reemplaza directamente el estado',(
 
 test('el motor Core valida antes de escribir al estado remoto',()=>{
   assert.match(core,/PanoramaFinanceIntegrity\?\.validate\(data/);
-  assert.match(core,/authHeaders\(\),Prefer:'resolution=merge-duplicates/);
-  assert.doesNotMatch(core,/headers:\{\.\.\.H,Prefer:/);
+  assert.match(core,/rpc\/update_panorama_finanzas_state/);
+  assert.match(core,/p_expected_revision/);
 });
 
 test('rutas de eventos financieros legacy fueron retiradas',()=>{
