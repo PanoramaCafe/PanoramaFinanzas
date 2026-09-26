@@ -162,6 +162,7 @@ function openMovementDetail(id){
 }
 function editMovement(id){
  const m=(db.moves||[]).find(x=>x.id===id);if(!m)return;
+ if(m.type==='transferencia'){alert('Las transferencias no se editan directamente. Elimínala y registra una nueva para mantener ambos saldos sincronizados.');return}
  // Imported/linked records must be edited from their source module to avoid breaking reconciliation.
  if(m.linkedType==='providerPurchase'){editProviderPurchase(m.linkedId);return}
  if(m.linkedType==='provider'){editPayment('provider',m.paymentId||m.linkedId);return}
@@ -216,6 +217,11 @@ function deleteMovement(id){
  const acc=getAccount(m.account||m.from);
  if(m.type==='entrada'){if(acc)acc.balance-=Number(m.amount||0)}
  else if(m.type==='salida'||m.type==='compra_credito'){if(acc)acc.balance+=Number(m.amount||0)}
+ else if(m.type==='transferencia'){
+  const to=getAccount(m.to);
+  if(acc)acc.balance+=Number(m.amount||0);
+  if(to)to.balance-=Number(m.amount||0);
+ }
  db.moves=db.moves.filter(x=>x.id!==id);
  save();renderMoves();
 }
