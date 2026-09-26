@@ -1006,11 +1006,18 @@ function openLoyverseSummary(){
 
 function renderDataStatus(){
  const el=document.getElementById('dataStatus');if(!el)return;
- el.innerHTML='<div class="row"><div><b>Último guardado</b><div class="muted">Los datos están en este navegador.</div></div><strong>'+new Date().toLocaleString('es-MX')+'</strong></div>'+
+ const pending=!!localStorage.getItem('panorama_finanzas_pending_v5');
+ const conflict=!!localStorage.getItem('panorama_finanzas_conflict_v1');
+ const revision=localStorage.getItem('panorama_finanzas_remote_revision_v1')||'—';
+ const syncLabel=conflict?'⚠️ Conflicto protegido':pending?'⏳ Pendiente de sincronizar':'☁️ Sincronizado';
+ const syncClass=conflict?'red':pending?'':'green';
+ el.innerHTML='<div class="row"><div><b>Estado de sincronización</b><div class="muted">Supabase es la fuente de verdad; este dispositivo conserva una caché local.</div></div><strong class="'+syncClass+'">'+syncLabel+'</strong></div>'+
+ '<div class="row"><div><b>Revisión de nube</b><div class="muted">Una revisión evita que un dispositivo atrasado reemplace silenciosamente datos nuevos.</div></div><strong>'+esc(revision)+'</strong></div>'+
  '<div class="row"><div><b>Movimientos</b></div><strong>'+db.moves.length+'</strong></div>'+
  '<div class="row"><div><b>Proveedores</b></div><strong>'+db.providers.length+'</strong></div>'+
  '<div class="row"><div><b>Compromisos</b></div><strong>'+db.commitments.length+'</strong></div>'+
- '<div class="row"><div><b>Cierres POS</b></div><strong>'+db.posCloses.length+'</strong></div>';
+ '<div class="row"><div><b>Cierres POS</b></div><strong>'+db.posCloses.length+'</strong></div>'+
+ '<div class="notice">Los cambios financieros importantes se protegen contra sobrescrituras por dispositivos atrasados. Antes de una operación masiva de importación o restauración, descarga un respaldo.</div>';
 }
 function exportData(){
  const payload={app:'Panorama Finanzas',version:'PF-V1-040',exportedAt:new Date().toISOString(),data:db};
