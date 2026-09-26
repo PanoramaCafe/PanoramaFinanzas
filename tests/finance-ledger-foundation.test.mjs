@@ -35,3 +35,11 @@ test('browser adapter uses authenticated RPCs instead of direct private-table ac
   assert.match(adapter,/post_finance_entry/);
   assert.match(adapter,/post_finance_transfer/);
 });
+
+
+test('public ledger RPC wrappers run as security definer',()=>{
+  for (const name of ['post_finance_entry','post_finance_transfer']) {
+    const block=new RegExp('create or replace function public\\.'+name+'[\\s\\S]*?language sql security definer').test(migration);
+    assert.equal(block,true,name+' debe ser SECURITY DEFINER');
+  }
+});
