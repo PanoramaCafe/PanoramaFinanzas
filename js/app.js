@@ -981,20 +981,25 @@ function renderPOSCloses(){
   return '<tr><td>'+esc(c.from)+' → '+esc(c.to)+'</td><td>'+money(c.sales)+'</td><td>'+money(c.expectedCash)+'</td><td>'+money(c.posExpenses)+'</td><td>'+money(c.changeLeft)+'</td><td>'+money(c.real)+'</td><td class="'+(Math.abs(diff)<0.005?'green':'red')+'"><b>'+money(diff)+'</b></td><td>'+money(c.withdrawal)+'</td><td><button class="btn" data-del-pos="'+c.id+'">Eliminar</button></td></tr>';
  }).join('')||'<tr><td colspan="9"><div class="empty">Todavía no hay cierres de Caja POS.</div></td></tr>';
  document.querySelectorAll('[data-del-pos]').forEach(function(b){
-  b.addEventListener('click',function(){
+  b.addEventListener('click',async function(){
    const c=db.posCloses.find(x=>x.id===b.dataset.delPos); if(!c)return;
    if(!confirm('¿Eliminar este cierre?'))return;
-   // If an automatic withdrawal was created, reverse it.
-   if(c.withdrawal>0 && c.withdrawalMoveId){
-    const m=db.moves.find(x=>x.id===c.withdrawalMoveId);
-    if(m){
-     const from=getAccount(m.from),to=getAccount(m.to);
-     if(from)from.balance+=Number(m.amount);
-     if(to)to.balance-=Number(m.amount);
-     db.moves=db.moves.filter(x=>x.id!==m.id);
+   if(c.withdrawal>0){
+    if(!c.withdrawalLedgerEntryId){
+     alert('Este cierre contiene un retiro anterior al libro transaccional y no puede eliminarse desde aquí sin normalizarlo primero.');
+     return;
     }
+    try{
+     await window.PanoramaFinanceLedger.reverse({id:c.withdrawalLedgerEntryId,reversalId:uid(),date:today(),reason:'Reversión de retiro de Cierre POS'});
+    }catch(err){
+     console.error(err);
+     alert('No se pudo revertir el retiro del Cierre POS en el libro financiero.\\n\\n'+err.message);
+     return;
+    }
+    db.moves=db.moves.filter(x=>x.id!==c.withdrawalLedgerEntryId);
    }
-   db.posCloses=db.posCloses.filter(x=>x.id!==c.id);save();
+   db.posCloses=db.posCloses.filter(x=>x.id!==c.id);
+   save();
   });
  });
 }
@@ -1025,23 +1030,37 @@ function openPOSClose(){
  }
  form.querySelectorAll('input').forEach(function(x){x.addEventListener('input',refresh)});
  document.getElementById('cancelModal').addEventListener('click',closeModal);refresh();
- form.addEventListener('submit',function(e){
+ form.addEventListener('submit',async function(e){
   e.preventDefault();const f=new FormData(form),from=f.get('from'),to=f.get('to');
   if(to<from){alert('La fecha final no puede ser anterior a la inicial.');return}
   const sales=Number(f.get('sales')),theoretical=Number(f.get('theoretical')),expenses=Number(f.get('expenses')),change=Number(f.get('change')),real=Number(f.get('real')),withdrawal=Number(f.get('withdrawal'));
+  if(!Number.isFinite(withdrawal)||withdrawal<0){alert('El retiro no es válido.');return}
   if(real<withdrawal){alert('El retiro no puede ser mayor que el efectivo real contado.');return}
   if(change>real){alert('El cambio dejado no puede ser mayor que el efectivo real contado.');return}
   if(withdrawal>0){
    if(!pos||!principal){alert('No existen Caja POS y Caja Principal.');return}
    if(pos.balance<withdrawal){alert('Caja POS no tiene saldo suficiente para registrar ese retiro.');return}
+  }
+  const close={id:uid(),created:Date.now(),from,to,sales,theoreticalCash:theoretical,expectedCash:theoretical,posExpenses:expenses,changeLeft:change,real,withdrawal,note:String(f.get('note')||''),withdrawalMoveId:null,withdrawalLedgerEntryId:null};
+  if(withdrawal>0){
+   const moveId=uid();
+   try{
+    await window.PanoramaFinanceLedger.transfer({id:moveId,date:to,amount:withdrawal,fromAccountId:pos.id,toAccountId:principal.id,concept:'Retiro Caja POS → Caja Principal',source:'pos_close',externalId:close.id,metadata:{posCloseId:close.id,from,to}});
+   }catch(err){
+    console.error(err);
+    alert('No se pudo registrar el retiro del Cierre POS en el libro financiero.\\n\\n'+err.message);
+    return;
+   }
+   close.withdrawalMoveId=moveId;
+   close.withdrawalLedgerEntryId=moveId;
+  }
+  if(withdrawal>0){
+   const move={id:close.withdrawalMoveId,ledgerEntryId:close.withdrawalLedgerEntryId,created:Date.now(),type:'transferencia',date:to,amount:withdrawal,concept:'Retiro Caja POS → Caja Principal',category:'',from:pos.id,to:principal.id,account:pos.id,note:'Cierre POS '+from+' → '+to,linkedType:'posClose',linkedId:close.id,source:'pos_close',externalId:close.id};
+   db.moves.push(move);
    pos.balance-=withdrawal;principal.balance+=withdrawal;
   }
-  const close={id:uid(),created:Date.now(),from,to,sales,theoreticalCash:theoretical,expectedCash:theoretical,posExpenses:expenses,changeLeft:change,real,withdrawal,note:f.get('note'),withdrawalMoveId:null};
-  if(withdrawal>0){
-   const move={id:uid(),created:Date.now(),type:'transferencia',date:to,amount:withdrawal,concept:'Retiro Caja POS → Caja Principal',category:'',from:pos.id,to:principal.id,account:pos.id,note:'Cierre POS '+from+' → '+to,linkedType:'posClose',linkedId:close.id};
-   close.withdrawalMoveId=move.id;db.moves.push(move);
-  }
-  db.posCloses.push(close);save();closeModal();
+  db.posCloses.push(close);
+  if(save())closeModal();
  });
 }
 
