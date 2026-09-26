@@ -1240,8 +1240,8 @@ if(sidebar){
 
   window.addEventListener('panorama-core-finance-ready',function(){renderAll();pullRemoteStateSafe();recoverPendingLedgerOperation();});
   window.addEventListener('panorama-auth-ready',function(){renderAll();pullRemoteStateSafe();recoverPendingLedgerOperation();});
-  window.addEventListener('panorama-finanzas-reload',function(){renderAll();});
-  window.addEventListener('panorama-finanzas-sync',function(ev){if(ev.detail?.status==='synced')renderAll();});
+  window.addEventListener('panorama-finanzas-reload',function(){db=load();lastGoodState=clone(db);renderAll();});
+  window.addEventListener('panorama-finanzas-sync',function(ev){if(ev.detail?.status==='synced'){db=load();lastGoodState=clone(db);renderAll();}});
   renderAll();
   window.addEventListener('online',pullRemoteStateSafe);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)pullRemoteStateSafe()});
