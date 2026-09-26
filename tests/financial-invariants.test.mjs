@@ -118,14 +118,10 @@ test('regresión: confirmación de nómina ocurre antes de descontar saldo local
   assert.ok(debitPos > confirmPos);
 });
 
-test('regresión: pagos fijos revierten el movimiento anterior al editar un pago ya pagado', () => {
-  const anchor = app.indexOf("const x=form.dataset.fixedId?db.fixedPayments.find(a=>a.id===form.dataset.fixedId):null;");
-  const start = app.indexOf("if(x){", anchor);
-  const end = app.indexOf("save();renderFixedPayments();closeModal();", start);
-  const block = app.slice(start, end);
-  assert.match(block, /const wasPaid=x\.status==='pagado'/);
-  assert.match(block, /oldAcc\.balance\+=oldAmount/);
-  assert.match(block, /sourceRecordId===x\.id&&m\.origin==='pagos_fijos'/);
+test('regresión: pagos fijos usan exclusivamente el adaptador transaccional', () => {
+  assert.match(app, /upsertFixedPayment/);
+  assert.match(app, /payFixedPayment/);
+  assert.doesNotMatch(app, /if\(form\.id==='fixedPaymentForm'\)\{/);
 });
 
 test('regresión: eliminar transferencia revierte cuenta origen y destino', () => {
@@ -159,11 +155,10 @@ test('regresión: pagos externos de nómina requieren referencia y no se duplica
   assert.match(app, /db\.payrollPeriods\.some\(x=>String\(x\.externalId\|\|''\)===externalId\)/);
 });
 
-test('regresión: eventos financieros externos con el mismo ID no se procesan dos veces', () => {
-  const start = app.indexOf('function applyExternalFinancialEvent');
-  const end = app.indexOf('\nfunction openAccount', start);
-  const block = app.slice(start, end);
-  assert.match(block, /db\.moves\.some\(m=>String\(m\.origin\|\|'\'\)===source&&String\(m\.externalId\|\|'\'\)===externalId\)/);
+test('regresión: rutas financieras legacy eliminadas no quedan alcanzables', () => {
+  assert.doesNotMatch(app, /function deleteMove\(/);
+  assert.doesNotMatch(app, /function applyExternalFinancialEvent\(/);
+  assert.doesNotMatch(app, /function registerIntegrationEvent\(/);
 });
 
 test('regresión: respaldo JSON sigue separado de exportación XLSX', () => {
