@@ -340,7 +340,7 @@ test('regresión: el Cierre POS sólo muta saldos locales después de confirmar 
 import { execFileSync } from 'node:child_process';
 test('regresión: sincronización financiera usa revisión compare-and-swap y no upsert ciego del estado',()=>{
   const core=read('panorama-core-integration.js');
-  assert.match(core,/select=data,updated_at,revision/);
+  assert.match(core,/rpc\/get_panorama_finanzas_state/);
   assert.match(core,/rpc\/update_panorama_finanzas_state/);
   assert.match(core,/p_expected_revision/);
   assert.doesNotMatch(core,/panorama_finanzas_state\\?on_conflict=id/);
