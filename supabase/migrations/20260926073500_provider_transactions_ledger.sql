@@ -23,8 +23,11 @@ alter table private.finance_providers enable row level security;
 alter table private.finance_provider_purchases enable row level security;
 alter table private.finance_provider_payments enable row level security;
 revoke all on private.finance_providers,private.finance_provider_purchases,private.finance_provider_payments from anon,authenticated;
+drop policy if exists finance_providers_access on private.finance_providers;
 create policy finance_providers_access on private.finance_providers for all to authenticated using ((select private.has_panorama_finanzas_access())) with check ((select private.has_panorama_finanzas_access()));
+drop policy if exists finance_provider_purchases_access on private.finance_provider_purchases;
 create policy finance_provider_purchases_access on private.finance_provider_purchases for all to authenticated using ((select private.has_panorama_finanzas_access())) with check ((select private.has_panorama_finanzas_access()));
+drop policy if exists finance_provider_payments_access on private.finance_provider_payments;
 create policy finance_provider_payments_access on private.finance_provider_payments for all to authenticated using ((select private.has_panorama_finanzas_access())) with check ((select private.has_panorama_finanzas_access()));
 
 create or replace function private.upsert_finance_provider(p_provider_id text,p_name text,p_payment_type text,p_note text default '')
