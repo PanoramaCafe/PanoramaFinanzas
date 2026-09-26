@@ -1233,13 +1233,34 @@ if(sidebar){
   async function pullRemoteStateSafe(){
     if(pullBusy || !navigator.onLine)return null;
     pullBusy=true;
-    try{return await window.PanoramaCoreFinance?.sync?.()||null;}
-    catch(e){console.warn('Panorama Finanzas: no se pudo sincronizar',e);return null}
-    finally{pullBusy=false}
+    const status=document.getElementById('syncStatusText');
+    try{
+      if(status)status.textContent='Consultando nube…';
+      const row=await window.PanoramaCoreFinance?.remoteState?.();
+      if(!row?.data)throw new Error('La nube no devolvió el estado financiero.');
+      const remoteData=clone(row.data);
+      const check=window.PanoramaFinanceIntegrity?.validate(remoteData,{silent:true});
+      if(check&&!check.ok)throw new Error('Estado de nube inválido: '+check.errors.slice(0,3).join(' | '));
+      const local=load();
+      if(JSON.stringify(local)!==JSON.stringify(remoteData)){
+        localStorage.setItem('panorama_finanzas_recovery_v1',JSON.stringify({capturedAt:new Date().toISOString(),reason:'cloud_authority_ui_pull',local:clone(local),remote:clone(remoteData),remoteRevision:Number(row.revision||1)}));
+        localStorage.setItem(STORAGE,JSON.stringify(remoteData));
+        db=clone(remoteData);lastGoodState=clone(remoteData);renderAll();
+      }else{db=clone(remoteData);lastGoodState=clone(remoteData);renderAll();}
+      const text= 'Sincronizado · nube rev. '+Number(row.revision||1)+' · '+((remoteData.moves||[]).length)+' movimientos';
+      if(status)status.textContent=text;
+      return remoteData;
+    }catch(e){
+      console.warn('Panorama Finanzas: no se pudo leer la nube',e);
+      if(status)status.textContent='⚠️ Sin sincronizar';
+      return null;
+    }finally{pullBusy=false}
   }
 
   window.addEventListener('panorama-core-finance-ready',function(){renderAll();pullRemoteStateSafe();recoverPendingLedgerOperation();});
   window.addEventListener('panorama-auth-ready',function(){renderAll();pullRemoteStateSafe();recoverPendingLedgerOperation();});
+  const syncStatusBtn=document.getElementById('syncStatus');
+  if(syncStatusBtn)syncStatusBtn.addEventListener('click',function(){pullRemoteStateSafe();});
   window.addEventListener('panorama-finanzas-reload',function(){db=load();lastGoodState=clone(db);renderAll();});
   window.addEventListener('panorama-finanzas-sync',function(ev){if(ev.detail?.status==='synced'){db=load();lastGoodState=clone(db);renderAll();}});
   renderAll();
