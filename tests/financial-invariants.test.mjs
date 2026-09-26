@@ -194,8 +194,8 @@ test('regresión: movimientos con ledger no se editan directamente',()=>{
 });
 
 test('regresión: editores legacy de pagos y compras fueron retirados',()=>{
-  assert.doesNotMatch(app,/function editPayment\\(/);
-  assert.doesNotMatch(app,/function editProviderPurchase\\(/);
+  assert.doesNotMatch(app,/function editPayment\(/);
+  assert.doesNotMatch(app,/function editProviderPurchase\(/);
   assert.doesNotMatch(app,/data-edit-commitment-payment/);
 });
 
