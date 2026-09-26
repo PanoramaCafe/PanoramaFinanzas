@@ -220,3 +220,15 @@ test('regresión: el adaptador expone el ciclo transaccional de proveedores',()=
   assert.match(ledger,/reverseProviderPurchase/);
   assert.match(ledger,/reverseProviderPayment/);
 });
+
+
+test('regresión: pagos fijos usan operaciones transaccionales',()=>{
+  assert.match(ledger,/upsertFixedPayment/);
+  assert.match(ledger,/payFixedPayment/);
+  assert.match(ledger,/reverseFixedPayment/);
+});
+test('regresión: el submit de pagos fijos confirma PostgreSQL antes de mutar el estado',()=>{
+  assert.match(ledger,/await upsertFixedPayment/);
+  assert.match(ledger,/if\(status==='pagado'\)await payFixedPayment/);
+  assert.match(ledger,/applyRemoteState/);
+});
