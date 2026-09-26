@@ -92,8 +92,8 @@ function accountKindIcon(a){ return accountKind(a)==='Efectivo'?'💵':'🏦'; }
 
 function renderDashboard(){
  const total=db.accounts.reduce((s,a)=>s+Number(a.balance||0),0);
- const committed=db.providers.reduce((s,p)=>s+Math.max(0,Number(p.total||0)-Number(p.paid||0)),0)+
-                  db.commitments.reduce((s,c)=>s+Math.max(0,Number(c.total||0)-Number(c.paid||0)),0);
+ const committed=(db.providers||[]).reduce((s,p)=>s+Math.max(0,Number(p.creditBalance||0)),0)+
+                  (db.commitments||[]).reduce((s,c)=>s+Math.max(0,Number(c.total||0)-Number(c.paid||0)),0);
  document.getElementById('totalMoney').textContent=money(total);
  document.getElementById('totalCommitted').textContent=money(committed);
  document.getElementById('freeMoney').textContent=money(total-committed);
