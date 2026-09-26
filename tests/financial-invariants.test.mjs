@@ -380,5 +380,6 @@ test('sintaxis: panorama-core-integration.js debe compilar como JavaScript váli
 
 test('regresión: el sincronizador define su guardia de estado vacío',()=>{
   assert.match(core,/function empty\(s\)/);
+  assert.match(core,/\['accounts',\.\.\.arrays\]/);
   assert.match(core,/empty\(local\)&&!empty\(ack\)/);
 });
