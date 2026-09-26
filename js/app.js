@@ -514,7 +514,7 @@ async function deletePayment(kind,pid){
   if(acc)acc.balance+=Number(p.amount||0);
   if(entity){
    if(kind==='provider')entity.creditBalance=Number(entity.creditBalance||0)+Number(p.amount||0);
-   else entity.paid=Math.max(0,Number(entity.paid||0)-Number(p.amount||0);
+   else entity.paid=Math.max(0,Number(entity.paid||0)-Number(p.amount||0));
   }
   db.moves=db.moves.filter(m=>m.paymentId!==pid);
   list.splice(idx,1);
