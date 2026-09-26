@@ -14,5 +14,9 @@ self.addEventListener("fetch",e=>{
    e.respondWith(fetch(e.request,{cache:"no-store"}).catch(()=>caches.match(e.request)));
    return;
  }
- e.respondWith(caches.match(e.request).then(c=>c||fetch(e.request)));
+ e.respondWith(caches.match(e.request).then(c=>c||fetch(e.request).then(r=>{
+   const copy=r.clone();
+   if(url.hostname==='cdn.jsdelivr.net') caches.open(CACHE_NAME).then(cache=>cache.put(e.request,copy)).catch(()=>{});
+   return r;
+ })));
 });
