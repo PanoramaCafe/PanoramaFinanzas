@@ -75,3 +75,18 @@ test('eventos externos registran el evento antes de mutar el saldo',()=>{
   const block=app.slice(start,end);
   assert.ok(block.indexOf('const id=registerIntegrationEvent(p)')<block.indexOf('if(direction===\'out\')acc.balance-=amount'));
 });
+
+test('merge de cuentas nuevas conserva su saldo',()=>{
+  const start=core.indexOf('function accountChanges');
+  const end=core.indexOf('function merge',start);
+  const block=core.slice(start,end);
+  assert.match(block,/if\\(!old\\)\\{meta\\[id\\]=clone\\(v\\);continue\\}/);
+});
+
+test('merge de cuentas eliminadas elimina el registro remoto',()=>{
+  assert.match(core,/for\\(const id of ac\\.deleted\\)am\\.delete\\(id\\)/);
+});
+
+test('eventos de integración participan en el merge como colección',()=>{
+  assert.match(core,/loyverseTreasuryExpenses','integrationEvents/);
+});
