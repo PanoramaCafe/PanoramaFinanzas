@@ -1047,6 +1047,7 @@ function importLoyverseTreasuryExpense(data){
  if(db.loyverseTreasuryExpenses.some(x=>String(x.externalId)===id))return {ok:false,duplicate:true};
  const amount=Number(data.amount||0); if(!Number.isFinite(amount)||amount<=0)return {ok:false,error:'Importe inválido.'};
  const acc=getAccount(String(data.accountId||''));
+ if(acc&&Number(acc.balance)<amount)return {ok:false,error:'La cuenta seleccionada no tiene saldo suficiente.'};
  const rec={id:uid(),externalId:id,source:'loyverse_treasury',date:String(data.date||today()),amount,concept:String(data.concept||data.name||'Salida de tesorería Loyverse'),category:String(data.category||'tesoreria_loyverse'),note:String(data.note||''),accountId:acc?acc.id:null,created:Date.now()};
  db.loyverseTreasuryExpenses.push(rec);
  if(acc){
@@ -1054,11 +1055,6 @@ function importLoyverseTreasuryExpense(data){
   db.moves.push({id:uid(),created:Date.now(),type:'salida',date:rec.date,amount,concept:rec.concept,category:'tesoreria_loyverse',from:acc.id,to:null,account:acc.id,note:rec.note,linkedType:'loyverseTreasury',linkedId:rec.id,externalId:id,source:'Loyverse'});
  }
  return {ok:true,record:rec};
-}
-
-
-function removeLoyverseTreasuryExpense(externalId){
- db.loyverseTreasuryExpenses=(db.loyverseTreasuryExpenses||[]).filter(x=>String(x.externalId)!==String(externalId));
 }
 
 
