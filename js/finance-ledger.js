@@ -51,7 +51,7 @@
     const f=new FormData(form),id=form.dataset.fixedId||uidUi(),concept=String(f.get('concept')||'').trim(),amount=Number(f.get('amount')),date=String(f.get('date')||''),status=String(f.get('status')||'pendiente'),accountId=String(f.get('account')||'')||null,note=String(f.get('note')||'').trim(),db=fixedState();
     const existing=(db?.fixedPayments||[]).find(x=>x.id===id);
     if(!concept||!Number.isFinite(amount)||amount<=0||!date)return alert('Revisa concepto, importe y fecha.');
-    if(existing?.status==='pagado')return alert('Este pago fijo ya está contabilizado. Para corregirlo, reviértelo y registra uno nuevo.');
+    if(existing?.status==='pagado'||existing?.status==='revertido')return alert(existing.status==='pagado'?'Este pago fijo ya está contabilizado. Para corregirlo, reviértelo y registra uno nuevo.':'Este registro ya fue revertido. Registra un nuevo pago fijo.');
     try{
       await upsertFixedPayment({id,concept,amount,date,status:'pendiente',accountId:null,note});
       if(status==='pagado')await payFixedPayment({id});
