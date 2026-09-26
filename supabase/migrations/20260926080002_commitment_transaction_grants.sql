@@ -1,0 +1,12 @@
+revoke all on function private.upsert_finance_commitment(text,text,text,numeric,date,text) from public,anon,authenticated;
+revoke all on function private.post_commitment_payment(text,date,text,numeric,text,text) from public,anon,authenticated;
+revoke all on function private.reverse_commitment_payment(text,text,text) from public,anon,authenticated;
+revoke all on function private.archive_finance_commitment(text) from public,anon,authenticated;
+revoke execute on function public.upsert_finance_commitment(text,text,text,numeric,date,text) from public,anon;
+revoke execute on function public.post_commitment_payment(text,date,text,numeric,text,text) from public,anon;
+revoke execute on function public.reverse_commitment_payment(text,text,text) from public,anon;
+revoke execute on function public.archive_finance_commitment(text) from public,anon;
+grant execute on function public.upsert_finance_commitment(text,text,text,numeric,date,text) to authenticated;
+grant execute on function public.post_commitment_payment(text,date,text,numeric,text,text) to authenticated;
+grant execute on function public.reverse_commitment_payment(text,text,text) to authenticated;
+grant execute on function public.archive_finance_commitment(text) to authenticated;

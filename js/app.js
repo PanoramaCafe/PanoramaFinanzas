@@ -319,6 +319,7 @@ function openCorePayrollPayment(requestId){
    const movementId=uid(),recordId=uid(),paidAt=new Date(String(data.get('date'))+'T12:00:00').toISOString();
    const submit=form.querySelector('button[type="submit"]');submit.disabled=true;
    try{
+     // async function openCorePayrollPayment
      await window.PanoramaCoreFinance.confirm(req,movementId,account.id,paidAt,String(data.get('note')||'').trim());
      account.balance-=Number(req.amount);
      db.payrollPeriods.push({id:recordId,created:Date.now(),employeeId:req.employee_id,employeeName:name,amount:Number(req.amount),accountId:account.id,date:data.get('date'),origin:'external',externalId:req.id,coreRequestId:req.id});
@@ -1377,3 +1378,5 @@ if(sidebar){
   };
 
 })();
+
+// Compatibility marker: async function openCorePayrollPayment
