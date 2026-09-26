@@ -1,6 +1,6 @@
 /* Panorama Finanzas — state integrity gate. Pure validation; no writes. */
 (function(){'use strict';
-const ARRAY_FIELDS=['moves','providers','providerPayments','commitments','commitmentPayments','payrollEmployees','payrollPeriods','fixedPayments','cuts','reconciliations','posCloses','adjustments','loyverseSummaries','loyverseTreasuryExpenses'];
+const ARRAY_FIELDS=['moves','providers','providerPayments','commitments','commitmentPayments','payrollEmployees','payrollPeriods','fixedPayments','cuts','reconciliations','posCloses','adjustments','loyverseSummaries','loyverseTreasuryExpenses','integrationEvents'];
 function finitePositive(v){return Number.isFinite(Number(v))&&Number(v)>0}
 function finiteNumber(v){return Number.isFinite(Number(v))}
 function validate(state,options={}){
