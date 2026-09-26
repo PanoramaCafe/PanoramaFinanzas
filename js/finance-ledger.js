@@ -41,7 +41,9 @@
   async function upsertFixedPayment({id,concept,amount,date,status='pendiente',accountId=null,note=''}){ return rpc('upsert_finance_fixed_payment',{p_payment_id:String(id),p_concept:String(concept),p_amount:Number(amount),p_occurred_on:date,p_status:String(status),p_account_id:accountId?String(accountId):null,p_note:String(note)}); }
   async function payFixedPayment({id}){ return rpc('pay_finance_fixed_payment',{p_payment_id:String(id)}); }
   async function reverseFixedPayment({id,reversalId,reason='Reversión de pago fijo'}){ return rpc('reverse_finance_fixed_payment',{p_payment_id:String(id),p_reversal_id:String(reversalId),p_reason:String(reason)}); }
-  window.PanoramaFinanceLedger={postEntry,transfer,reverse,adjustBalance,upsertProvider,postProviderPurchase,postProviderPayment,reverseProviderPurchase,reverseProviderPayment,upsertCommitment,postCommitmentPayment,reverseCommitmentPayment,archiveCommitment,upsertFixedPayment,payFixedPayment,reverseFixedPayment};
+  async function postLoyverseTreasuryExpense({id,externalId,date,amount,accountId,concept,category='tesoreria_loyverse',note=''}){ return rpc('post_loyverse_treasury_expense',{p_expense_id:String(id),p_external_id:String(externalId),p_occurred_on:String(date),p_amount:Number(amount),p_account_id:String(accountId),p_concept:String(concept),p_category:String(category||'tesoreria_loyverse'),p_note:String(note||'')}); }
+  async function reverseLoyverseTreasuryExpense({id,reversalId,reason='Reversión de salida de tesorería Loyverse'}){ return rpc('reverse_loyverse_treasury_expense',{p_expense_id:String(id),p_reversal_id:String(reversalId),p_reason:String(reason)}); }
+  window.PanoramaFinanceLedger={postEntry,transfer,reverse,adjustBalance,upsertProvider,postProviderPurchase,postProviderPayment,reverseProviderPurchase,reverseProviderPayment,upsertCommitment,postCommitmentPayment,reverseCommitmentPayment,archiveCommitment,upsertFixedPayment,payFixedPayment,reverseFixedPayment,postLoyverseTreasuryExpense,reverseLoyverseTreasuryExpense};
 
   function fixedState(){return window.PanoramaFinanceApp?.getState?.()}
   function fixedClone(x){return JSON.parse(JSON.stringify(x))}
