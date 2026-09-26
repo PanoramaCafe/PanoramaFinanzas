@@ -27,6 +27,10 @@
   async function postProviderPayment({id,date,providerId,amount,accountId,note=''}){ return rpc('post_provider_payment',{p_payment_id:String(id),p_occurred_on:date,p_provider_id:String(providerId),p_amount:Number(amount),p_account_id:String(accountId),p_note:String(note)}); }
   async function reverseProviderPurchase({id,reversalId,reason='Reversión de compra'}){ return rpc('reverse_provider_purchase',{p_purchase_id:String(id),p_reversal_id:String(reversalId),p_reason:String(reason)}); }
   async function reverseProviderPayment({id,reversalId,reason='Reversión de pago'}){ return rpc('reverse_provider_payment',{p_payment_id:String(id),p_reversal_id:String(reversalId),p_reason:String(reason)}); }
+  async function upsertCommitment({id,name,category,total,dueDate=null,note=''}){ return rpc('upsert_finance_commitment',{p_commitment_id:String(id),p_name:String(name),p_category:String(category||'otro_compromiso'),p_total:Number(total),p_due_date:dueDate||null,p_note:String(note)}); }
+  async function postCommitmentPayment({id,date,commitmentId,amount,accountId,note=''}){ return rpc('post_commitment_payment',{p_payment_id:String(id),p_occurred_on:date,p_commitment_id:String(commitmentId),p_amount:Number(amount),p_account_id:String(accountId),p_note:String(note)}); }
+  async function reverseCommitmentPayment({id,reversalId,reason='Reversión de pago de compromiso'}){ return rpc('reverse_commitment_payment',{p_payment_id:String(id),p_reversal_id:String(reversalId),p_reason:String(reason)}); }
+  async function archiveCommitment({id}){ return rpc('archive_finance_commitment',{p_commitment_id:String(id)}); }
   async function transfer({id,date,amount,fromAccountId,toAccountId,concept,source='manual',externalId=null,metadata={}}){
     return rpc('post_finance_transfer',{
       p_entry_id:String(id),p_occurred_on:date,p_amount:Number(amount),
@@ -34,5 +38,5 @@
       p_concept:String(concept),p_source:String(source),p_external_id:externalId,p_metadata:metadata
     });
   }
-  window.PanoramaFinanceLedger={postEntry,transfer,reverse,adjustBalance,upsertProvider,postProviderPurchase,postProviderPayment,reverseProviderPurchase,reverseProviderPayment};
+  window.PanoramaFinanceLedger={postEntry,transfer,reverse,adjustBalance,upsertProvider,postProviderPurchase,postProviderPayment,reverseProviderPurchase,reverseProviderPayment,upsertCommitment,postCommitmentPayment,reverseCommitmentPayment,archiveCommitment};
 })();
