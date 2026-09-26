@@ -25,7 +25,7 @@ const DEFAULT={
    ['nomina','Nómina'],['impuesto','Impuesto'],['servicio','Servicio'],['otro_compromiso','Otro compromiso']
   ].map(x=>({id:x[0],name:x[1],active:true}))
  },
- moves:[],providers:[],commitments:[],cuts:[],providerPayments:[],commitmentPayments:[],payrollEmployees:[],payrollPeriods:[],fixedPayments:[],reconciliations:[],posCloses:[],adjustments:[],loyverseSummaries:[],loyverseTreasuryExpenses:[]
+ moves:[],providers:[],commitments:[],cuts:[],providerPayments:[],commitmentPayments:[],payrollEmployees:[],payrollPeriods:[],fixedPayments:[],reconciliations:[],posCloses:[],adjustments:[],loyverseSummaries:[],loyverseTreasuryExpenses:[],integrationEvents:[]
 };
 
 let db=load();
@@ -43,7 +43,7 @@ function load(){
   d.categories.salida=d.categories.salida||[];
   d.categories.compromiso=d.categories.compromiso||[];
   d.moves=d.moves||[]; d.providers=d.providers||[]; d.commitments=d.commitments||[]; d.cuts=d.cuts||[];
-  d.providerPayments=d.providerPayments||[]; d.commitmentPayments=d.commitmentPayments||[]; d.payrollEmployees=d.payrollEmployees||[]; d.payrollPeriods=d.payrollPeriods||[]; d.fixedPayments=d.fixedPayments||[]; d.reconciliations=d.reconciliations||[]; d.loyverseTreasuryExpenses=d.loyverseTreasuryExpenses||[]; d.posCloses=d.posCloses||[]; d.adjustments=d.adjustments||[]; d.loyverseSummaries=d.loyverseSummaries||[];
+  d.providerPayments=d.providerPayments||[]; d.commitmentPayments=d.commitmentPayments||[]; d.payrollEmployees=d.payrollEmployees||[]; d.payrollPeriods=d.payrollPeriods||[]; d.fixedPayments=d.fixedPayments||[]; d.reconciliations=d.reconciliations||[]; d.loyverseTreasuryExpenses=d.loyverseTreasuryExpenses||[]; d.posCloses=d.posCloses||[]; d.adjustments=d.adjustments||[]; d.loyverseSummaries=d.loyverseSummaries||[]; d.integrationEvents=d.integrationEvents||[];
   return d;
  }catch(e){return clone(DEFAULT)}
 }
