@@ -5,8 +5,9 @@ begin
  if not private.has_panorama_finanzas_access() then raise exception 'Acceso no autorizado' using errcode='42501'; end if;
  if trim(coalesce(p_concept,''))='' or p_amount<=0 then raise exception 'Pago fijo inválido'; end if;
  if p_status<>'pendiente' then raise exception 'El alta de un pago fijo debe comenzar como pendiente'; end if;
+ if p_account_id is not null and not exists(select 1 from private.finance_accounts where id=p_account_id and active) then raise exception 'Cuenta inválida'; end if;
  insert into private.finance_fixed_payments(id,concept,amount,occurred_on,status,account_id,note)
- values(p_payment_id,trim(p_concept),p_amount,p_occurred_on,'pendiente',null,coalesce(p_note,''))
+ values(p_payment_id,trim(p_concept),p_amount,p_occurred_on,'pendiente',p_account_id,coalesce(p_note,''))
  on conflict(id) do update set concept=excluded.concept,amount=excluded.amount,occurred_on=excluded.occurred_on,note=excluded.note,updated_at=now()
  returning * into v; return v;
 end $$;
