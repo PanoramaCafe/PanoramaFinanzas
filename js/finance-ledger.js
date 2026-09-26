@@ -38,8 +38,43 @@
       p_concept:String(concept),p_source:String(source),p_external_id:externalId,p_metadata:metadata
     });
   }
-  window.PanoramaFinanceLedger={postEntry,transfer,reverse,adjustBalance,upsertProvider,postProviderPurchase,postProviderPayment,reverseProviderPurchase,reverseProviderPayment,upsertCommitment,postCommitmentPayment,reverseCommitmentPayment,archiveCommitment};
+  async function upsertFixedPayment({id,concept,amount,date,status='pendiente',accountId=null,note=''}){ return rpc('upsert_finance_fixed_payment',{p_payment_id:String(id),p_concept:String(concept),p_amount:Number(amount),p_occurred_on:date,p_status:String(status),p_account_id:accountId?String(accountId):null,p_note:String(note)}); }
+  async function payFixedPayment({id}){ return rpc('pay_finance_fixed_payment',{p_payment_id:String(id)}); }
+  async function reverseFixedPayment({id,reversalId,reason='Reversión de pago fijo'}){ return rpc('reverse_finance_fixed_payment',{p_payment_id:String(id),p_reversal_id:String(reversalId),p_reason:String(reason)}); }
+  window.PanoramaFinanceLedger={postEntry,transfer,reverse,adjustBalance,upsertProvider,postProviderPurchase,postProviderPayment,reverseProviderPurchase,reverseProviderPayment,upsertCommitment,postCommitmentPayment,reverseCommitmentPayment,archiveCommitment,upsertFixedPayment,payFixedPayment,reverseFixedPayment};
 
+  function fixedState(){return window.PanoramaFinanceApp?.getState?.()}
+  function fixedClone(x){return JSON.parse(JSON.stringify(x))}
+  async function handleFixedSubmit(e){
+    const form=e.target;if(form?.id!=='fixedPaymentForm')return;
+    e.preventDefault();e.stopImmediatePropagation();
+    const f=new FormData(form),id=form.dataset.fixedId||uidUi(),concept=String(f.get('concept')||'').trim(),amount=Number(f.get('amount')),date=String(f.get('date')||''),status=String(f.get('status')||'pendiente'),accountId=String(f.get('account')||'')||null,note=String(f.get('note')||'').trim(),db=fixedState();
+    const existing=(db?.fixedPayments||[]).find(x=>x.id===id);
+    if(!concept||!Number.isFinite(amount)||amount<=0||!date)return alert('Revisa concepto, importe y fecha.');
+    if(existing?.status==='pagado'||existing?.status==='revertido')return alert(existing.status==='pagado'?'Este pago fijo ya está contabilizado. Para corregirlo, reviértelo y registra uno nuevo.':'Este registro ya fue revertido. Registra un nuevo pago fijo.');
+    try{
+      await upsertFixedPayment({id,concept,amount,date,status:'pendiente',accountId:null,note});
+      if(status==='pagado')await payFixedPayment({id});
+      const n=fixedClone(fixedState());n.fixedPayments=n.fixedPayments||[];
+      const row=n.fixedPayments.find(x=>x.id===id);
+      const next={id,created:row?.created||Date.now(),concept,amount,date,status:status==='pagado'?'pagado':'pendiente',accountId:status==='pagado'?accountId:null,note,ledgerFixedPaymentId:id};
+      if(row)Object.assign(row,next);else n.fixedPayments.push(next);
+      window.PanoramaFinanceApp.applyRemoteState(n);closeModal();
+    }catch(err){console.error(err);alert('No se pudo registrar el pago fijo en el libro financiero.\\n\\n'+err.message)}
+  }
+  async function handleFixedClick(e){
+    const b=e.target?.closest?.('[data-fixed]');if(!b)return;
+    const db=fixedState(),x=(db?.fixedPayments||[]).find(a=>a.id===b.dataset.fixed);if(!x||x.status!=='pagado')return;
+    e.preventDefault();e.stopImmediatePropagation();
+    if(!confirm('Este pago fijo ya está contabilizado. ¿Revertir su efecto financiero?'))return;
+    try{
+      await reverseFixedPayment({id:x.id,reversalId:uidUi(),reason:'Reversión de pago fijo'});
+      const n=fixedClone(fixedState()),row=n.fixedPayments.find(a=>a.id===x.id);if(row){row.status='revertido';row.accountId=null;row.ledgerFixedPaymentId=null}
+      window.PanoramaFinanceApp.applyRemoteState(n);
+    }catch(err){console.error(err);alert('No se pudo revertir el pago fijo.\\n\\n'+err.message)}
+  }
+  document.addEventListener('submit',handleFixedSubmit,true);
+  document.addEventListener('click',handleFixedClick,true);
   const escUi=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const uidUi=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
   const uiState=()=>window.PanoramaFinanceApp?.getState?.();

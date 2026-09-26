@@ -355,7 +355,7 @@ function openPayrollPayment(){const em=db.payrollEmployees;if(!em.length){alert(
 function renderFixedPayments(){
  const body=document.getElementById('fixedPaymentsBody');if(!body)return;
  const rows=(db.fixedPayments||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
- body.innerHTML=rows.map(x=>'<tr><td><b>'+esc(x.concept)+'</b></td><td>'+money(x.amount)+'</td><td>'+esc(x.date)+'</td><td><span class="'+(x.status==='pagado'?'green':'red')+'">'+(x.status==='pagado'?'Pagado':'Pendiente')+'</span></td><td>'+esc(getAccount(x.accountId)?.name||'—')+'</td><td><button class="btn" data-fixed="'+x.id+'">'+(x.status==='pagado'?'Ver':'Pagar')+'</button></td></tr>').join('')||'<tr><td colspan="6"><div class="empty">No hay pagos fijos registrados.</div></td></tr>';
+ body.innerHTML=rows.map(x=>'<tr><td><b>'+esc(x.concept)+'</b></td><td>'+money(x.amount)+'</td><td>'+esc(x.date)+'</td><td><span class="'+(x.status==='pagado'?'green':x.status==='revertido'?'muted':'red')+'">'+(x.status==='pagado'?'Pagado':x.status==='revertido'?'Revertido':'Pendiente')+'</span></td><td>'+esc(getAccount(x.accountId)?.name||'—')+'</td><td>'+(x.status==='revertido'?'<span class="muted">Sin acción</span>':'<button class="btn" data-fixed="'+x.id+'">'+(x.status==='pagado'?'Revertir':'Pagar')+'</button>')+'</td></tr>').join('')||'<tr><td colspan="6"><div class="empty">No hay pagos fijos registrados.</div></td></tr>';
  document.querySelectorAll('[data-fixed]').forEach(b=>b.addEventListener('click',()=>openFixedPayment(b.dataset.fixed)));
  const pending=document.getElementById('fixedPendingTotal'),paid=document.getElementById('fixedPaidTotal');
  if(pending)pending.textContent=money(rows.filter(x=>x.status!=='pagado').reduce((s,x)=>s+Number(x.amount||0),0));
