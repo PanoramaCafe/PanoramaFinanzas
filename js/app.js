@@ -271,14 +271,6 @@ function renderAccounts(){
  }));
 }
 
-function providerFinancials(pid){
- const purchases=db.moves.filter(m=>m.linkedType==='providerPurchase'&&m.linkedId===pid);
- const payments=db.providerPayments.filter(p=>p.providerId===pid);
- const purchased=purchases.reduce((s,m)=>s+Number(m.amount),0);
- const paid=payments.reduce((s,p)=>s+Number(p.amount),0);
- const p=db.providers.find(x=>x.id===pid);
- return {purchased,paid,pending:Number(p?.creditBalance||0),purchases,payments};
-}
 function deleteAccount(id){
  const a=getAccount(id);if(!a)return;
  const hasMoves=(db.moves||[]).some(m=>m.account===id||m.from===id||m.to===id);
@@ -454,9 +446,6 @@ function renderPayments(){
  document.querySelectorAll('[data-del-commitment-payment]').forEach(function(b){b.addEventListener('click',function(){deletePayment('commitment',b.dataset.delCommitmentPayment)})});
 }
 
-function findPayment(kind,pid){
- return (kind==='provider'?db.providerPayments:db.commitmentPayments).find(p=>p.id===pid);
-}
 function linkedEntity(kind,p){
  return kind==='provider'?db.providers.find(x=>x.id===p.providerId):db.commitments.find(x=>x.id===p.commitmentId);
 }
@@ -972,9 +961,6 @@ function resultRange(){
  return {from,to};
 }
 
-function loyverseTreasuryTotal(start,end){
- return (db.loyverseTreasuryExpenses||[]).filter(x=>(!start||x.date>=start)&&(!end||x.date<=end)).reduce((s,x)=>s+Number(x.amount||0),0);
-}
 async function importLoyverseTreasuryExpense(data){
  const id=String(data.id||data.externalId||''); if(!id)return {ok:false,error:'Falta identificador de Loyverse.'};
  db.loyverseTreasuryExpenses=db.loyverseTreasuryExpenses||[];
