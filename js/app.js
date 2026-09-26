@@ -47,9 +47,9 @@ function load(){
   return d;
  }catch(e){return clone(DEFAULT)}
 }
-function save(){
+function save(options={}){
   const candidate=clone(db);
-  const check=window.PanoramaFinanceIntegrity?.validate(candidate,{silent:true});
+  const check=window.PanoramaFinanceIntegrity?.validate(candidate,{silent:true,...options});
   if(check && !check.ok){
     console.error('Panorama Finanzas: guardado rechazado por integridad',check.errors);
     db=clone(lastGoodState);
@@ -473,7 +473,7 @@ function openMovement(type){
     await window.PanoramaFinanceLedger.transfer({id,date:f.get('date'),amount:amt,fromAccountId:from.id,toAccountId:to.id,concept:'Transferencia',metadata:{note:f.get('note')||''}});
     from.balance-=amt;to.balance+=amt;
     db.moves.push({id,ledgerEntryId:id,created:Date.now(),origin:'manual',type:'transferencia',date:f.get('date'),amount:amt,concept:'Transferencia',category:'',from:from.id,to:to.id,account:from.id,note:f.get('note')||''});
-    if(save())closeModal();
+    if(save({accountIds:[from.id,to.id]}))closeModal();
     else{
       try{await window.PanoramaFinanceLedger.reverse({id,reversalId:uid(),date:today(),reason:'Rollback: fallo al guardar estado compatible'});}catch(rollbackErr){console.error('FALLO CRÍTICO: no se pudo revertir la transferencia tras fallo de estado',rollbackErr);alert('El libro financiero registró la transferencia, pero el estado compatible no pudo guardarse y tampoco se pudo revertir automáticamente. No vuelvas a intentarlo; requiere conciliación.');return}
     }
@@ -504,7 +504,7 @@ function openMovement(type){
    await window.PanoramaFinanceLedger.postEntry({id,date:f.get('date'),type:isOut?'salida':'entrada',amount,accountId:acc.id,concept:f.get('note')||(isOut?'Salida manual':'Entrada manual'),category:f.get('category')||null,source:origin,externalId:externalId||null});
    if(isOut)acc.balance-=amount;else acc.balance+=amount;
    db.moves.push({id,ledgerEntryId:id,created:Date.now(),origin,externalId,type:isOut?'salida':'entrada',date:f.get('date'),amount,concept:f.get('note')|| (isOut?'Salida manual':'Entrada manual'),category:f.get('category')||'',from:isOut?acc.id:null,to:isOut?null:acc.id,account:acc.id,note:f.get('note')||''});
-   if(save())closeModal();
+   if(save({accountIds:[acc.id]}))closeModal();
    else{
     try{await window.PanoramaFinanceLedger.reverse({id,reversalId:uid(),date:today(),reason:'Rollback: fallo al guardar estado compatible'});}catch(rollbackErr){console.error('FALLO CRÍTICO: no se pudo revertir el movimiento tras fallo de estado',rollbackErr);alert('El libro financiero registró el movimiento, pero el estado compatible no pudo guardarse y tampoco se pudo revertir automáticamente. No vuelvas a intentarlo; requiere conciliación.');return}
    }
