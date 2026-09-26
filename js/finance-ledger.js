@@ -6,10 +6,11 @@
   'use strict';
   async function rpc(name,args){
     if(!window.PanoramaAuth?.session) throw new Error('Sesión no autenticada');
-    if(!window.supabase?.createClient) throw new Error('Cliente Supabase no disponible');
-    const client=window.PanoramaSupabaseClient||(window.PanoramaSupabaseClient=window.supabase.createClient(window.PANORAMA_SUPABASE.url,window.PANORAMA_SUPABASE.key));
-    const {data,error}=await client.rpc(name,args);
-    if(error) throw error;
+    const headers={...(window.PanoramaAuth?.headers?.()||{}),apikey:window.PANORAMA_SUPABASE.key,'Content-Type':'application/json','Prefer':'return=representation'};
+    const response=await fetch(window.PANORAMA_SUPABASE.url+'/rest/v1/rpc/'+encodeURIComponent(name),{method:'POST',headers,body:JSON.stringify(args),cache:'no-store'});
+    const text=await response.text();
+    let data=null; try{data=text?JSON.parse(text):null;}catch{data=text;}
+    if(!response.ok) throw new Error(typeof data==='string'?data:(data?.message||'Error en RPC'));
     return data;
   }
   async function postEntry({id,date,type,amount,accountId,concept,category=null,source='manual',externalId=null,metadata={}}){
