@@ -174,7 +174,7 @@ test('regresión: respaldo JSON sigue separado de exportación XLSX', () => {
 });
 
 const ledger=fs.readFileSync(new URL('../js/finance-ledger.js',import.meta.url),'utf8');
-const migration=fs.readFileSync(new URL('../supabase/migrations/20260926_finance_ledger_foundation.sql',import.meta.url),'utf8');
+const migration=fs.readFileSync(new URL('../supabase/migrations/20260926_secure_finance_account_adjustments.sql',import.meta.url),'utf8');
 test('regresión: movimientos manuales nuevos usan el ledger transaccional',()=>{
   assert.match(app,/PanoramaFinanceLedger\.postEntry/);
   assert.match(app,/ledgerEntryId:id/);
