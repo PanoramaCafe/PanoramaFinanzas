@@ -172,3 +172,23 @@ test('regresión: respaldo JSON sigue separado de exportación XLSX', () => {
   assert.match(app, /requiredArrays=\['accounts','moves'/);
   assert.match(app, /db=clone\(d\)/);
 });
+
+const ledger=fs.readFileSync(new URL('../js/finance-ledger.js',import.meta.url),'utf8');
+const migration=fs.readFileSync(new URL('../supabase/migrations/20260926_finance_ledger_foundation.sql',import.meta.url),'utf8');
+test('regresión: movimientos manuales nuevos usan el ledger transaccional',()=>{
+  assert.match(app,/PanoramaFinanceLedger\.postEntry/);
+  assert.match(app,/ledgerEntryId:id/);
+  assert.match(app,/PanoramaFinanceLedger\.transfer/);
+});
+test('regresión: movimientos del ledger no se editan directamente',()=>{
+  assert.match(app,/if\(m\.ledgerEntryId\)\{alert\('Este movimiento ya pertenece al libro financiero/);
+});
+test('regresión: eliminación de movimiento ledger usa reversión atómica',()=>{
+  assert.match(app,/PanoramaFinanceLedger\.reverse/);
+  assert.match(migration,/create or replace function private\.reverse_finance_entry/);
+  assert.match(migration,/reverses_entry_id/);
+});
+test('regresión: adaptador expone reversión',()=>{
+  assert.match(ledger,/async function reverse/);
+  assert.match(ledger,/window\.PanoramaFinanceLedger=\{postEntry,transfer,reverse\}/);
+});

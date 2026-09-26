@@ -175,8 +175,8 @@ function openMovementDetail(id){
 }
 function editMovement(id){
  const m=(db.moves||[]).find(x=>x.id===id);if(!m)return;
+ if(m.ledgerEntryId){alert('Este movimiento ya pertenece al libro financiero. Para mantener el historial inmutable, elimínalo y registra uno nuevo en lugar de editarlo.');return}
  if(m.type==='transferencia'){alert('Las transferencias no se editan directamente. Elimínala y registra una nueva para mantener ambos saldos sincronizados.');return}
- // Imported/linked records must be edited from their source module to avoid breaking reconciliation.
  if(m.linkedType==='providerPurchase'){editProviderPurchase(m.linkedId);return}
  if(m.linkedType==='provider'){editPayment('provider',m.paymentId||m.linkedId);return}
  if(m.linkedType==='commitment'){editPayment('commitment',m.paymentId||m.linkedId);return}
@@ -200,26 +200,18 @@ function editMovement(id){
   const d=new FormData(f),amount=Number(d.get('amount')),newType=String(d.get('type')),newAcc=getAccount(d.get('account')),oldAcc=getAccount(m.account||m.from);
   if(!Number.isFinite(amount)||amount<=0){alert('El importe no es válido.');return}
   if(!newAcc){alert('Selecciona una cuenta válida.');return}
-  // Revert old balance, then validate/apply the new balance.
   if(m.type==='entrada'){if(oldAcc)oldAcc.balance-=Number(m.amount||0)}
   else if(m.type==='salida'||m.type==='compra_credito'){if(oldAcc)oldAcc.balance+=Number(m.amount||0)}
-  if(newType==='entrada'){
-   newAcc.balance+=amount;
-  }else if(newType==='salida'){
-   if(newAcc.id!==oldAcc?.id && Number(newAcc.balance)<amount){
-    if(m.type==='entrada'){if(oldAcc)oldAcc.balance+=Number(m.amount||0)}else if(oldAcc)oldAcc.balance-=Number(m.amount||0);
-    alert('La cuenta no tiene saldo suficiente.');return;
-   }
-   if(newAcc.id===oldAcc?.id && Number(newAcc.balance)<amount){ // balance currently includes old amount
-    alert('La cuenta no tiene saldo suficiente.');if(m.type==='entrada')oldAcc.balance+=Number(m.amount||0);else oldAcc.balance-=Number(m.amount||0);return;
-   }
+  if(newType==='entrada')newAcc.balance+=amount;
+  else if(newType==='salida'){
+   if(Number(newAcc.balance)<amount){if(oldAcc&&m.type==='entrada')oldAcc.balance+=Number(m.amount||0);else if(oldAcc)oldAcc.balance-=Number(m.amount||0);alert('La cuenta no tiene saldo suficiente.');return}
    newAcc.balance-=amount;
   }
   m.date=String(d.get('date'));m.type=newType;m.amount=amount;m.account=newAcc.id;m.from=newAcc.id;m.category=String(d.get('category'));m.concept=String(d.get('concept'));m.note=String(d.get('note')||'');
   save();renderMoves();closeModal();
  });
 }
-function deleteMovement(id){
+async function deleteMovement(id){
  const m=(db.moves||[]).find(x=>x.id===id);if(!m)return;
  if(m.linkedType==='providerPurchase'){deleteProviderPurchase(m.linkedId);return}
  if(m.linkedType==='provider'){alert('Este pago debe eliminarse desde Proveedores para revertir también la deuda.');return}
@@ -227,18 +219,17 @@ function deleteMovement(id){
  if(m.linkedType==='loyverseTreasury'){alert('Esta salida proviene de Loyverse. Elimínala desde Salidas de tesorería Loyverse para revertir correctamente la cuenta.');return}
  if(m.linkedType){alert('Este movimiento está vinculado a otro módulo. Elimínalo desde su registro de origen.');return}
  if(!confirm('¿Eliminar este movimiento? Se revertirá su efecto sobre la cuenta.'))return;
+ if(m.ledgerEntryId){
+  try{await window.PanoramaFinanceLedger.reverse({id:m.ledgerEntryId,reversalId:uid(),date:today(),reason:'Reversión: '+(m.concept||'Movimiento')});}
+  catch(err){console.error(err);alert('No se pudo revertir el movimiento en el libro financiero.\n\n'+err.message);return}
+ }
  const acc=getAccount(m.account||m.from);
  if(m.type==='entrada'){if(acc)acc.balance-=Number(m.amount||0)}
  else if(m.type==='salida'||m.type==='compra_credito'){if(acc)acc.balance+=Number(m.amount||0)}
- else if(m.type==='transferencia'){
-  const to=getAccount(m.to);
-  if(acc)acc.balance+=Number(m.amount||0);
-  if(to)to.balance-=Number(m.amount||0);
- }
+ else if(m.type==='transferencia'){const to=getAccount(m.to);if(acc)acc.balance+=Number(m.amount||0);if(to)to.balance-=Number(m.amount||0)}
  db.moves=db.moves.filter(x=>x.id!==id);
  save();renderMoves();
 }
-
 
 function renderAccounts(){
  const body=document.getElementById('accountsBody');
@@ -531,31 +522,45 @@ function deletePayment(kind,pid){
 }
 
 function openMovement(type){
- const isOut=type==='salida',providers=db.providers||[],transfer=type==='transferencia';
+ const isOut=type==='salida',transfer=type==='transferencia';
  if(transfer){
   openModal('<h2>Nueva transferencia</h2><form id="movementForm"><div class="formGrid"><div class="field"><label>Fecha</label><input class="input" name="date" type="date" value="'+today()+'" required></div><div class="field"><label>Importe</label><input class="input" name="amount" type="number" min="0.01" step="0.01" required></div><div class="field"><label>Origen</label><select class="select" name="from">'+accountOptions()+'</select></div><div class="field"><label>Destino</label><select class="select" name="to">'+accountOptions()+'</select></div><div class="field full"><label>Nota</label><input class="input" name="note"></div></div><div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Guardar</button></div></form>');
   document.getElementById('cancelModal').addEventListener('click',closeModal);
-  document.getElementById('movementForm').addEventListener('submit',function(e){e.preventDefault();const f=new FormData(e.target),amt=Number(f.get('amount')),from=getAccount(f.get('from')),to=getAccount(f.get('to'));if(amt<=0||!from||!to||from.id===to.id){alert('Revisa origen, destino e importe.');return}if(from.balance<amt){alert('La cuenta de origen no tiene saldo suficiente.');return}from.balance-=amt;to.balance+=amt;db.moves.push({id:uid(),created:Date.now(),origin:'manual',type:'transferencia',date:f.get('date'),amount:amt,concept:'Transferencia',category:'',from:from.id,to:to.id,account:from.id,note:f.get('note')});save();closeModal()});return;
+  document.getElementById('movementForm').addEventListener('submit',async function(e){
+   e.preventDefault();
+   const f=new FormData(e.target),amt=Number(f.get('amount')),from=getAccount(f.get('from')),to=getAccount(f.get('to')),id=uid();
+   if(!Number.isFinite(amt)||amt<=0||!from||!to||from.id===to.id){alert('Revisa origen, destino e importe.');return}
+   if(from.balance<amt){alert('La cuenta de origen no tiene saldo suficiente.');return}
+   try{
+    await window.PanoramaFinanceLedger.transfer({id,date:f.get('date'),amount:amt,fromAccountId:from.id,toAccountId:to.id,concept:'Transferencia',metadata:{note:f.get('note')||''}});
+    from.balance-=amt;to.balance+=amt;
+    db.moves.push({id,ledgerEntryId:id,created:Date.now(),origin:'manual',type:'transferencia',date:f.get('date'),amount:amt,concept:'Transferencia',category:'',from:from.id,to:to.id,account:from.id,note:f.get('note')||''});
+    if(save())closeModal();
+   }catch(err){console.error(err);alert('No se pudo registrar la transferencia en el libro financiero.\n\n'+err.message)}
+  });return;
  }
  openModal('<h2>'+ (isOut?'Nueva salida':'Nueva entrada') +'</h2><form id="movementForm"><div class="formGrid"><div class="field"><label>Fecha</label><input class="input" name="date" type="date" value="'+today()+'" required></div><div class="field"><label>Importe</label><input class="input" name="amount" type="number" min="0.01" step="0.01" required></div>'+
  (isOut?'<div class="field"><label>Categoría</label><select class="select" name="category">'+categoryOptions('salida')+'</select></div>':'')+
  '<div class="field"><label>Cuenta / dinero</label><select class="select" name="account">'+accountOptions()+'</select></div>'+
  '<div class="field"><label>Origen del registro</label><select class="select" name="origin"><option value="manual">Manual / excepción</option><option value="nomina">Nómina externa</option><option value="loyverse">Loyverse</option></select></div>'+
  '<div class="field"><label>Referencia externa (opcional)</label><input class="input" name="externalId" placeholder="ID de nómina, folio, etc."></div>'+
- '<div class="field full"><label>Concepto / Nota</label><input class="input" name="note"></div></div><div class="notice">En el uso normal, los módulos de Proveedores, Nómina, Pagos fijos y Compromisos generarán estos movimientos automáticamente. Este formulario queda para excepciones o registros externos.</div><div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Guardar</button></div></form>');
- const form=document.getElementById('movementForm'),account=form.querySelector('[name="account"]');
+ '<div class="field full"><label>Concepto / Nota</label><input class="input" name="note"></div></div><div class="notice">Los movimientos manuales se registran ahora en el libro financiero transaccional y después se reflejan en el estado compatible de la aplicación.</div><div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Guardar</button></div></form>');
+ const form=document.getElementById('movementForm');
  document.getElementById('cancelModal').addEventListener('click',closeModal);
- form.addEventListener('submit',function(e){
+ form.addEventListener('submit',async function(e){
   e.preventDefault();
-  const f=new FormData(form),amount=Number(f.get('amount')),acc=getAccount(f.get('account'));
-  if(amount<=0||!acc){alert('Revisa importe y cuenta.');return}
+  const f=new FormData(form),amount=Number(f.get('amount')),acc=getAccount(f.get('account')),externalId=String(f.get('externalId')||'').trim(),origin=String(f.get('origin')||'manual'),id=uid();
+  if(!Number.isFinite(amount)||amount<=0||!acc){alert('Revisa importe y cuenta.');return}
   if(isOut&&acc.balance<amount){alert('La cuenta no tiene saldo suficiente.');return}
-  if(isOut)acc.balance-=amount;else acc.balance+=amount;
-  db.moves.push({id:uid(),created:Date.now(),origin:f.get('origin')||'manual',externalId:f.get('externalId')||'',type:isOut?'salida':'entrada',date:f.get('date'),amount,concept:f.get('note')|| (isOut?'Salida manual':'Entrada manual'),category:f.get('category')||'',from:isOut?acc.id:null,to:isOut?null:acc.id,account:acc.id,note:f.get('note')});
-  save();closeModal();
+  if(externalId&&db.moves.some(m=>String(m.origin||'')===origin&&String(m.externalId||'')===externalId)){alert('Esa referencia externa ya está registrada.');return}
+  try{
+   await window.PanoramaFinanceLedger.postEntry({id,date:f.get('date'),type:isOut?'salida':'entrada',amount,accountId:acc.id,concept:f.get('note')||(isOut?'Salida manual':'Entrada manual'),category:f.get('category')||null,source:origin,externalId:externalId||null});
+   if(isOut)acc.balance-=amount;else acc.balance+=amount;
+   db.moves.push({id,ledgerEntryId:id,created:Date.now(),origin,externalId,type:isOut?'salida':'entrada',date:f.get('date'),amount,concept:f.get('note')|| (isOut?'Salida manual':'Entrada manual'),category:f.get('category')||'',from:isOut?acc.id:null,to:isOut?null:acc.id,account:acc.id,note:f.get('note')||''});
+   if(save())closeModal();
+  }catch(err){console.error(err);alert('No se pudo registrar el movimiento en el libro financiero.\n\n'+err.message)}
  });
 }
-
 function registerIntegrationEvent(payload){
  const p=payload||{},externalId=String(p.externalId||'').trim(),source=String(p.source||'external');
  db.integrationEvents=db.integrationEvents||[];

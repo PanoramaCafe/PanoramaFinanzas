@@ -20,6 +20,7 @@
       p_source:String(source),p_external_id:externalId,p_metadata:metadata
     });
   }
+  async function reverse({id,reversalId,date,reason='Reversión'}){ return rpc('reverse_finance_entry',{p_entry_id:String(id),p_reversal_id:String(reversalId),p_occurred_on:date,p_reason:String(reason)}); }
   async function transfer({id,date,amount,fromAccountId,toAccountId,concept,source='manual',externalId=null,metadata={}}){
     return rpc('post_finance_transfer',{
       p_entry_id:String(id),p_occurred_on:date,p_amount:Number(amount),
@@ -27,5 +28,5 @@
       p_concept:String(concept),p_source:String(source),p_external_id:externalId,p_metadata:metadata
     });
   }
-  window.PanoramaFinanceLedger={postEntry,transfer};
+  window.PanoramaFinanceLedger={postEntry,transfer,reverse};
 })();
