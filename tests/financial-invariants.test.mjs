@@ -140,7 +140,7 @@ test('regresión: ningún movimiento puede editarse directamente', () => {
   const end = app.indexOf('\nfunction deleteMovement', start);
   const block = app.slice(start, end);
   assert.match(block, /m\.ledgerEntryId/);
-  assert.match(block, /no se editan directamente/);
+  assert.match(block, /no puede editarse directamente/);
   assert.doesNotMatch(block, /m\.amount=amount/);
 });
 
