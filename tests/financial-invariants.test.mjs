@@ -259,8 +259,9 @@ test('regresión: el submit de pagos fijos confirma PostgreSQL antes de mutar el
 });
 
 
-test('regresión: pagos fijos pagados no reutilizan el registro después de reversión',()=>{
-  assert.match(ledger,/status==='pagado'\|\|status==='revertido'/);
+test('regresión: adaptador de pagos fijos expone pago y reversión separados',()=>{
+  assert.match(ledger,/payFixedPayment/);
+  assert.match(ledger,/reverseFixedPayment/);
 });
 
 
