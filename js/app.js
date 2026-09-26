@@ -218,7 +218,8 @@ async function deleteMovement(id){
  if(m.linkedType==='commitment'){alert('Este pago debe eliminarse desde Compromisos para mantener el saldo correcto.');return}
  if(m.linkedType==='loyverseTreasury'){alert('Esta salida proviene de Loyverse. Elimínala desde Salidas de tesorería Loyverse para revertir correctamente la cuenta.');return}
  if(m.linkedType){alert('Este movimiento está vinculado a otro módulo. Elimínalo desde su registro de origen.');return}
- if(!m.ledgerEntryId){alert('Este movimiento es anterior al libro transaccional y no puede eliminarse desde aquí sin normalizarlo primero.');return}\n if(!confirm('¿Eliminar este movimiento? Se revertirá su efecto sobre la cuenta.'))return;
+ if(!m.ledgerEntryId){alert('Este movimiento es anterior al libro transaccional y no puede eliminarse desde aquí sin normalizarlo primero.');return}
+ if(!confirm('¿Eliminar este movimiento? Se revertirá su efecto sobre la cuenta.'))return;
  if(m.ledgerEntryId){
   try{await window.PanoramaFinanceLedger.reverse({id:m.ledgerEntryId,reversalId:uid(),date:today(),reason:'Reversión: '+(m.concept||'Movimiento')});}
   catch(err){console.error(err);alert('No se pudo revertir el movimiento en el libro financiero.\n\n'+err.message);return}
