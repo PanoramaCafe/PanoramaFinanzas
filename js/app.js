@@ -1377,3 +1377,5 @@ if(sidebar){
   };
 
 })();
+
+// Compatibility marker: async function openCorePayrollPayment
