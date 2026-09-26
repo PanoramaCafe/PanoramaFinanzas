@@ -9,3 +9,4 @@ alter table private.finance_fixed_payments enable row level security;
 revoke all on private.finance_fixed_payments from anon,authenticated;
 drop policy if exists finance_fixed_payments_access on private.finance_fixed_payments;
 create policy finance_fixed_payments_access on private.finance_fixed_payments for all to authenticated using((select private.has_panorama_finanzas_access())) with check((select private.has_panorama_finanzas_access()));
+alter table private.finance_fixed_payments add constraint finance_fixed_payment_paid_account_check check(status <> 'pagado' or account_id is not null);
