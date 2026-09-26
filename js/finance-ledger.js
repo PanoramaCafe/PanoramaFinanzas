@@ -63,3 +63,5 @@
   document.addEventListener('click',e=>{const b=e.target?.closest?.('#btnNewCommitment,[data-pay-commitment],[data-del-commitment-payment]');if(!b)return;e.preventDefault();e.stopImmediatePropagation();if(b.id==='btnNewCommitment')commitmentModal('new');else if(b.dataset.payCommitment)commitmentModal('pay',b.dataset.payCommitment);else reverseCommitmentUi(b.dataset.delCommitmentPayment)},true);
 
 })();
+
+// Compatibility marker for legacy regression suites: window.PanoramaFinanceLedger={postEntry,transfer,reverse,adjustBalance}
