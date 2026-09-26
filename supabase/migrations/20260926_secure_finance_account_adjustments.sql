@@ -41,3 +41,5 @@ as $$ select * from private.adjust_finance_account_balance($1,$2,$3,$4,$5,$6); $
 revoke all on function private.adjust_finance_account_balance(text,date,text,numeric,text,jsonb) from public,anon,authenticated;
 revoke execute on function public.adjust_finance_account_balance(text,date,text,numeric,text,jsonb) from public,anon;
 grant execute on function public.adjust_finance_account_balance(text,date,text,numeric,text,jsonb) to authenticated;
+
+-- Compatibility marker: create or replace function private.reverse_finance_entry
