@@ -395,3 +395,12 @@ test('movimientos independientes pueden guardar validando sólo sus cuentas afec
   assert.match(app,/save\(\{accountIds:\[from\.id,to\.id\]\}\)/);
   assert.match(app,/save\(\{accountIds:\[acc\.id\]\}\)/);
 });
+
+
+test('regresión: operaciones manuales conservan una operación pendiente para reintentos idempotentes',()=>{
+  assert.match(app,/PENDING_LEDGER='panorama_finanzas_pending_ledger_v1'/);
+  assert.match(app,/setPendingLedger\(\{id,kind:'movimiento',payload,move\}\)/);
+  assert.match(app,/setPendingLedger\(\{id,kind:'transferencia',payload,move\}\)/);
+  assert.match(app,/recoverPendingLedgerOperation/);
+  assert.match(app,/clearPendingLedger\(id\)/);
+});
