@@ -58,9 +58,10 @@ test('el guardado pasa por el validador central',()=>{
   assert.match(app,/db=clone\(lastGoodState\)/);
 });
 
-test('la recepción remota del módulo UI no reemplaza directamente el estado',()=>{
-  assert.match(app,/window\.PanoramaCoreFinance\?\.sync\?\.\(\)/);
-  assert.doesNotMatch(app,/const remote=await window\.PanoramaCoreFinance\?\.remoteState\?\.\(\)/);
+test('la UI puede consultar y adoptar el estado autoritativo de la nube',()=>{
+  assert.match(app,/window\.PanoramaCoreFinance\?\.remoteState\?\.\(\)/);
+  assert.match(app,/localStorage\.setItem\(STORAGE,JSON\.stringify\(remoteData\)\)/);
+  assert.match(app,/db=clone\(remoteData\);lastGoodState=clone\(remoteData\);renderAll\(\)/);
 });
 
 test('el motor Core valida antes de escribir al estado remoto',()=>{
