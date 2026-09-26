@@ -209,6 +209,10 @@ test('regresión: el saldo de una cuenta existente no se edita directamente',()=
 });
 
 
+test('regresión: nómina de Core envía la fecha elegida al ledger',()=>{
+  assert.match(core,/p_occurred_on:String\(String\(paidAt\)\.slice\(0,10\)\)/);
+});
+
 test('regresión: nómina local usa el ledger transaccional',()=>{
   assert.match(app,/PanoramaFinanceLedger\.postEntry/);
   assert.match(app,/source:'payroll'/);
