@@ -88,3 +88,11 @@ test('merge de cuentas eliminadas elimina el registro remoto',()=>{
 test('eventos de integración participan en el merge como colección',()=>{
   assert.ok(core.includes("loyverseTreasuryExpenses','integrationEvents"));
 });
+
+
+test('boot recupera una caché local inválida desde la nube sin sobrescribirla',()=>{
+  assert.match(core,/invalid_local_state/);
+  assert.match(core,/localCheck=window\.PanoramaFinanceIntegrity\?\.validate\(local/);
+  assert.match(core,/write\(RECOVERY/);
+  assert.match(core,/applyRemote\(clone\(r\.data\),false,revision\)/);
+});
