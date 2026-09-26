@@ -1165,6 +1165,29 @@ function resetTestData(){
  localStorage.removeItem(STORAGE);db=load();renderAll();alert('Datos de prueba restaurados.');
 }
 
+// Navegación principal — cada botón activa exclusivamente su vista y actualiza el encabezado.
+document.querySelectorAll('.nav button[data-view]').forEach(function(button){
+  button.addEventListener('click',function(){
+    const viewId=button.dataset.view;
+    const view=document.getElementById(viewId);
+    if(!view)return;
+    document.querySelectorAll('.nav button[data-view]').forEach(function(b){b.classList.toggle('active',b===button);});
+    document.querySelectorAll('.view').forEach(function(v){v.classList.toggle('active',v.id===viewId);});
+    const title=document.getElementById('title');
+    if(title)title.textContent=button.querySelector('.navText')?.textContent?.trim()||viewId;
+    if(window.matchMedia('(max-width:900px)').matches){
+      const sb=document.getElementById('appSidebar');
+      if(sb)sb.classList.add('is-collapsed');
+      document.body.classList.remove('sidebar-open');
+      document.body.classList.add('sidebar-closed');
+      document.getElementById('sidebarOverlay')?.classList.remove('show');
+    }
+    if(viewId==='resultado')renderResult();
+    if(viewId==='payroll')renderPayroll();
+    if(viewId==='pagosfijos')renderFixedPayments();
+  });
+});
+
 // Button wiring — explicit listeners, no inline event handlers.
 document.getElementById('btnEntrada').addEventListener('click',function(){openMovement('entrada')});
 document.getElementById('btnSalida').addEventListener('click',function(){openMovement('salida')});
