@@ -4,6 +4,7 @@ const ARRAY_FIELDS=['moves','providers','providerPayments','commitments','commit
 function finitePositive(v){return Number.isFinite(Number(v))&&Number(v)>0}
 function finiteNumber(v){return Number.isFinite(Number(v))}
 function validate(state,options={}){
+ const scopeAccounts=Array.isArray(options.accountIds)?new Set(options.accountIds.map(String)):null;
  const errors=[];
  if(!state||typeof state!=='object'||Array.isArray(state))return {ok:false,errors:['El estado financiero no es un objeto.']};
  if(!Array.isArray(state.accounts))errors.push('accounts debe ser un arreglo.');
@@ -11,7 +12,7 @@ function validate(state,options={}){
  for(const k of ['entrada','salida','compromiso'])if(!Array.isArray(state.categories?.[k]))errors.push('Falta categories.'+k+'.');
  for(const k of ARRAY_FIELDS)if(!Array.isArray(state[k]))errors.push(k+' debe ser un arreglo.');
  const ids=new Set();
- for(const a of state.accounts||[]){const id=String(a?.id||'');if(!id)errors.push('Cuenta sin id.');else if(ids.has(id))errors.push('ID de cuenta duplicado: '+id+'.');else ids.add(id);if(!finiteNumber(a?.balance)||Number(a.balance)<0)errors.push('Saldo inválido en cuenta '+(id||'(sin id)')+'.');}
+ for(const a of state.accounts||[]){const id=String(a?.id||'');if(!id)errors.push('Cuenta sin id.');else if(ids.has(id))errors.push('ID de cuenta duplicado: '+id+'.');else ids.add(id);if((!scopeAccounts||scopeAccounts.has(id))&&(!finiteNumber(a?.balance)||Number(a.balance)<0))errors.push('Saldo inválido en cuenta '+(id||'(sin id)')+'.');}
  const accountId=id=>ids.has(String(id||''));
  const checkUnique=(arr,name)=>{const seen=new Set();for(const x of arr||[]){const id=String(x?.id||'');if(!id)errors.push(name+': registro sin id.');else if(seen.has(id))errors.push(name+': ID duplicado '+id+'.');else seen.add(id)}};
  for(const k of ARRAY_FIELDS)checkUnique(state[k],k);
