@@ -215,7 +215,7 @@ test('regresión: el saldo de una cuenta existente no se edita directamente',()=
 
 
 test('regresión: nómina local usa el ledger transaccional',()=>{
-  assert.match(app,/PanoramaFinanceLedger\\.postEntry/);
+  assert.match(app,/PanoramaFinanceLedger\.postEntry/);
   assert.match(app,/source:'payroll'/);
   assert.match(app,/ledgerEntryId:movementId/);
 });
