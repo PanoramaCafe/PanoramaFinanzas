@@ -1253,7 +1253,6 @@ if(sidebar){
     return true;
   }
 
-  let remoteSyncTimer=null;
   async function pullRemoteState(){
     try{
       const remote=await window.PanoramaCoreFinance?.remoteState?.();
@@ -1265,15 +1264,26 @@ if(sidebar){
     }
   }
 
+  // Sincronización dirigida: arranque, conexión recuperada, visibilidad y eventos explícitos.
+  // Evita polling periódico que genera tráfico innecesario y posibles carreras de estado.
+  let pullBusy=false;
+  async function pullRemoteStateSafe(){
+    if(pullBusy || !navigator.onLine)return null;
+    pullBusy=true;
+    try{return await pullRemoteState();}
+    finally{pullBusy=false;}
+  }
+
   window.addEventListener('panorama-core-finance-ready', async function(){
-    const remote=await pullRemoteState();
+    const remote=await pullRemoteStateSafe();
     if(!remote?.data || !Object.keys(remote.data).length){
       window.PanoramaCoreFinance?.syncState(db);
     }
-    if(remoteSyncTimer===null){
-      remoteSyncTimer=setInterval(pullRemoteState,5000);
-    }
   });
+
+  window.addEventListener('online',pullRemoteStateSafe);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)pullRemoteStateSafe()});
+  window.addEventListener('panorama-finanzas-sync',pullRemoteStateSafe);
 
   window.PanoramaFinanceApp={
     applyRemoteState,
