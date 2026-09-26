@@ -4,6 +4,7 @@ import fs from 'node:fs';
 
 const app = fs.readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
 const core = fs.readFileSync(new URL('../panorama-core-integration.js', import.meta.url), 'utf8');
+const read = file => fs.readFileSync(new URL('../' + file, import.meta.url), 'utf8');
 
 function move(state, account, type, amount) {
   const a = state.accounts[account];
@@ -371,4 +372,13 @@ test('regresión: el estado financiero tiene respaldo histórico antes de cada a
 
 test('sintaxis: app.js debe compilar como JavaScript válido',()=>{
   execFileSync(process.execPath,['--check','js/app.js'],{stdio:'pipe'});
+});
+
+test('sintaxis: panorama-core-integration.js debe compilar como JavaScript válido',()=>{
+  execFileSync(process.execPath,['--check','panorama-core-integration.js'],{stdio:'pipe'});
+});
+
+test('regresión: el sincronizador define su guardia de estado vacío',()=>{
+  assert.match(core,/function empty\(s\)/);
+  assert.match(core,/empty\(local\)&&!empty\(ack\)/);
 });
