@@ -616,10 +616,10 @@ function openAccount(editId){
  '<option value="cash" '+(existing&&accountKind(existing)==='Efectivo'?'selected':'')+'>Efectivo</option>'+
  '<option value="digital" '+(existing&&accountKind(existing)==='Digital'?'selected':'')+'>Digital</option>'+
  '</select></div>'+
- '<div class="field"><label>Saldo actual</label><input class="input" name="balance" type="number" min="0" step="0.01" value="'+Number(existing?.balance||0).toFixed(2)+'" required></div>'+
+ '<div class="field"><label>Saldo actual</label><input class="input" name="balance" type="number" min="0" step="0.01" value="'+Number(existing?.balance||0).toFixed(2)+'" '+(existing?'disabled':'')+' required></div>'+
  '<div class="field"><label>Estado</label><select class="select" name="active"><option value="true" '+(existing?.active!==false?'selected':'')+'>Activa</option><option value="false" '+(existing?.active===false?'selected':'')+'>Inactiva</option></select></div>'+
  '</div>'+
- (existing?'<div class="notice">Cambiar el saldo aquí modifica el saldo de la cuenta. Para una corrección auditada del saldo usa <b>Ajustar saldo</b>.</div>':'')+
+ (existing?'<div class="notice">El saldo de una cuenta existente es inmutable desde este formulario. Para cambiarlo usa <b>Ajustar saldo</b>, que genera un asiento transaccional y auditado.</div>':'')+
  '<div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Guardar</button></div></form>');
  const form=document.getElementById('accountForm');
  document.getElementById('cancelModal').addEventListener('click',closeModal);
@@ -629,7 +629,6 @@ function openAccount(editId){
    if(!name||!Number.isFinite(balance)||balance<0){alert('Revisa nombre y saldo.');return}
    if(existing){
      existing.name=name;
-     existing.balance=balance;
      existing.active=f.get('active')!=='false';
      existing.kind=f.get('kind');
      existing.type=f.get('kind')==='cash'?'Efectivo':'Digital';
@@ -668,18 +667,19 @@ function openAccountAdjustment(accountId){
  }
  bal.addEventListener('input',updateDiff);updateDiff();
  document.getElementById('cancelModal').addEventListener('click',closeModal);
- form.addEventListener('submit',function(e){
+ form.addEventListener('submit',async function(e){
   e.preventDefault();
-  const n=Number(bal.value),reason=form.querySelector('[name="reason"]').value.trim();
-  if(!Number.isFinite(n)||n<0||!reason){alert('Revisa el saldo y el motivo.');return}
+  const n=Number(bal.value),reason=form.querySelector('[name="reason"]').value.trim(),date=form.querySelector('[name="date"]').value,id=uid();
+  if(!Number.isFinite(n)||n<0||!reason||!date){alert('Revisa el saldo, la fecha y el motivo.');return}
   const old=Number(a.balance||0),delta=n-old;
-  a.balance=n;
-  db.adjustments=db.adjustments||[];
-  db.adjustments.push({
-   id:uid(),created:Date.now(),date:form.querySelector('[name="date"]').value,
-   accountId:a.id,accountName:a.name,previousBalance:old,newBalance:n,difference:delta,reason
-  });
-  save();closeModal();
+  if(Math.abs(delta)<0.005){alert('No hay ninguna diferencia que ajustar.');return}
+  try{
+   await window.PanoramaFinanceLedger.adjustBalance({id,date,accountId:a.id,targetBalance:n,reason,metadata:{previousBalance:old,newBalance:n}});
+   a.balance=n;
+   db.adjustments=db.adjustments||[];
+   db.adjustments.push({id,created:Date.now(),date,accountId:a.id,accountName:a.name,previousBalance:old,newBalance:n,difference:delta,reason,ledgerEntryId:id});
+   if(save())closeModal();
+  }catch(err){console.error(err);alert('No se pudo registrar el ajuste en el libro financiero.\n\n'+err.message)}
  });
 }
 

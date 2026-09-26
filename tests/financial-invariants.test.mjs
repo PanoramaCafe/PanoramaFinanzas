@@ -174,7 +174,7 @@ test('regresión: respaldo JSON sigue separado de exportación XLSX', () => {
 });
 
 const ledger=fs.readFileSync(new URL('../js/finance-ledger.js',import.meta.url),'utf8');
-const migration=fs.readFileSync(new URL('../supabase/migrations/20260926_finance_ledger_foundation.sql',import.meta.url),'utf8');
+const migration=fs.readFileSync(new URL('../supabase/migrations/20260926_secure_finance_account_adjustments.sql',import.meta.url),'utf8');
 test('regresión: movimientos manuales nuevos usan el ledger transaccional',()=>{
   assert.match(app,/PanoramaFinanceLedger\.postEntry/);
   assert.match(app,/ledgerEntryId:id/);
@@ -190,5 +190,18 @@ test('regresión: eliminación de movimiento ledger usa reversión atómica',()=
 });
 test('regresión: adaptador expone reversión',()=>{
   assert.match(ledger,/async function reverse/);
-  assert.match(ledger,/window\.PanoramaFinanceLedger=\{postEntry,transfer,reverse\}/);
+  assert.match(ledger,/window\.PanoramaFinanceLedger=\{postEntry,transfer,reverse,adjustBalance\}/);
+});
+
+
+test('regresión: los ajustes de saldo usan el ledger transaccional',()=>{
+  assert.match(app,/PanoramaFinanceLedger\.adjustBalance/);
+  assert.match(app,/ledgerEntryId:id/);
+  assert.match(ledger,/adjustBalance/);
+  assert.match(migration,/adjust_finance_account_balance/);
+});
+
+test('regresión: el saldo de una cuenta existente no se edita directamente',()=>{
+  assert.match(app,/existing\?'disabled':''/);
+  assert.doesNotMatch(app,/existing\.balance=balance/);
 });
