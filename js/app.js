@@ -345,7 +345,7 @@ function openPayrollEmployee(id){
  openModal('<h2>'+(e?'Editar empleado':'Nuevo empleado')+'</h2><form id="payrollEmployeeForm" data-employee-id="'+esc(e?.id||'')+'"><div class="formGrid"><div class="field"><label>Nombre</label><input class="input" name="name" value="'+esc(e?.name||'')+'" required></div><div class="field"><label>Pago habitual</label><input class="input" name="pay" type="number" min="0" step="0.01" value="'+Number(e?.defaultPay||0)+'" required></div></div><div class="modalActions"><button type="button" class="btn" id="cancelPayrollEmployee">Cancelar</button><button type="submit" class="btn primary">Guardar</button></div></form>');
 }
 
-function openPayrollPayment(){const em=db.payrollEmployees;if(!em.length){alert('Primero agrega un empleado.');return}openModal('<h2>Registrar pago de nómina</h2><form id="payrollPaymentForm"><div class="formGrid"><div class="field"><label>Empleado</label><select class="select" name="employee">'+em.map(e=>'<option value="'+e.id+'">'+esc(e.name)+'</option>').join('')+'</select></div><div class="field"><label>Importe</label><input class="input" name="amount" type="number" min="0.01" step="0.01" required></div><div class="field"><label>Cuenta / dinero</label><select class="select" name="account">'+accountOptions()+'</select></div><div class="field"><label>Fecha</label><input class="input" name="date" type="date" value="'+today()+'" required></div><div class="field"><label>Origen</label><select class="select" name="origin"><option value="local">Local / excepción</option><option value="external">App de Nómina</option></select></div><div class="field"><label>Referencia externa</label><input class="input" name="externalId"></div></div><div class="notice">Cuando exista la integración, el pago podrá llegar desde la app de Nómina sin recapturarlo.</div><div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Pagar</button></div></form>');document.getElementById('cancelModal').addEventListener('click',closeModal);document.getElementById('payrollPaymentForm').addEventListener('submit',ev=>{ev.preventDefault();const f=new FormData(ev.target),e=em.find(x=>x.id===f.get('employee')),amount=Number(f.get('amount')),acc=getAccount(f.get('account'));if(!e||amount<=0||!acc||acc.balance<amount){alert('Revisa los datos y el saldo.');return}acc.balance-=amount;const rec={id:uid(),created:Date.now(),employeeId:e.id,employeeName:e.name,amount,accountId:acc.id,date:f.get('date'),origin:f.get('origin'),externalId:f.get('externalId')||''};db.payrollPeriods.push(rec);db.moves.push({id:uid(),created:Date.now(),origin:'nomina',externalId:rec.externalId,sourceRecordId:rec.id,type:'salida',date:rec.date,amount,concept:'Nómina — '+e.name,category:'nomina',from:acc.id,to:null,account:acc.id,note:'Pago de nómina'});save();closeModal()})}
+function openPayrollPayment(){const em=db.payrollEmployees;if(!em.length){alert('Primero agrega un empleado.');return}openModal('<h2>Registrar pago de nómina</h2><form id="payrollPaymentForm"><div class="formGrid"><div class="field"><label>Empleado</label><select class="select" name="employee">'+em.map(e=>'<option value="'+e.id+'">'+esc(e.name)+'</option>').join('')+'</select></div><div class="field"><label>Importe</label><input class="input" name="amount" type="number" min="0.01" step="0.01" required></div><div class="field"><label>Cuenta / dinero</label><select class="select" name="account">'+accountOptions()+'</select></div><div class="field"><label>Fecha</label><input class="input" name="date" type="date" value="'+today()+'" required></div><div class="field"><label>Origen</label><select class="select" name="origin"><option value="local">Local / excepción</option><option value="external">App de Nómina</option></select></div><div class="field"><label>Referencia externa</label><input class="input" name="externalId"></div></div><div class="notice">Cuando exista la integración, el pago podrá llegar desde la app de Nómina sin recapturarlo.</div><div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Pagar</button></div></form>');document.getElementById('cancelModal').addEventListener('click',closeModal);document.getElementById('payrollPaymentForm').addEventListener('submit',ev=>{ev.preventDefault();const f=new FormData(ev.target),e=em.find(x=>x.id===f.get('employee')),amount=Number(f.get('amount')),acc=getAccount(f.get('account')),origin=String(f.get('origin')||'local'),externalId=String(f.get('externalId')||'').trim();if(!e||amount<=0||!acc||acc.balance<amount){alert('Revisa los datos y el saldo.');return}if(origin==='external'&&!externalId){alert('Los pagos externos requieren una referencia única.');return}if(externalId&&db.payrollPeriods.some(x=>String(x.externalId||'')===externalId)){alert('Ese pago de nómina ya fue registrado.');return}acc.balance-=amount;const rec={id:uid(),created:Date.now(),employeeId:e.id,employeeName:e.name,amount,accountId:acc.id,date:f.get('date'),origin,externalId};db.payrollPeriods.push(rec);db.moves.push({id:uid(),created:Date.now(),origin:'nomina',externalId:rec.externalId,sourceRecordId:rec.id,type:'salida',date:rec.date,amount,concept:'Nómina — '+e.name,category:'nomina',from:acc.id,to:null,account:acc.id,note:'Pago de nómina'});save();closeModal()})}
 
 function renderFixedPayments(){
  const body=document.getElementById('fixedPaymentsBody');if(!body)return;
@@ -544,12 +544,18 @@ function openMovement(type){
 }
 
 function registerIntegrationEvent(payload){
- const p=payload||{};
+ const p=payload||{},externalId=String(p.externalId||'').trim(),source=String(p.source||'external');
+ db.integrationEvents=db.integrationEvents||[];
+ if(externalId){
+  const existing=db.integrationEvents.find(x=>String(x.source||'')===source&&String(x.externalId||'')===externalId);
+  if(existing)return existing.id;
+  if(db.moves.some(x=>String(x.origin||'')===source&&String(x.externalId||'')===externalId))throw new Error('El movimiento externo ya fue registrado.');
+ }
  const event={
   id:p.id||uid(),
-  source:p.source||'external',
+  source,
   type:p.type||'financial_event',
-  externalId:p.externalId||'',
+  externalId,
   date:p.date||today(),
   amount:Number(p.amount||0),
   accountId:p.accountId||null,
@@ -567,6 +573,8 @@ function applyExternalFinancialEvent(payload){
  const amount=Number(p.amount||0);
  if(amount<=0)throw new Error('Importe inválido');
  const direction=p.direction||'out';
+ const externalId=String(p.externalId||'').trim();
+ if(externalId&&db.moves.some(m=>String(m.origin||'')===source&&String(m.externalId||'')===externalId))throw new Error('Este movimiento externo ya fue registrado.');
  if(direction==='out'){
   if(acc.balance<amount)throw new Error('Saldo insuficiente');
   acc.balance-=amount;
