@@ -104,3 +104,7 @@ test('integridad permite saldos negativos en cuentas digitales declaradas como C
  state.accounts[0].type='Cuenta digital'; state.accounts[0].balance=-125.5;
  assert.equal(validate(state,{silent:true}).ok,true);
 });
+
+
+test('la lectura de nube usa RPC autorizado',()=>{assert.match(core,/rpc\\/get_panorama_finanzas_state/);assert.doesNotMatch(core,/panorama_finanzas_state\\?id=eq\\./);});
+test('la UI expone estados de sesión y acceso',()=>{assert.match(app,/Sesión requerida/);assert.match(app,/Sin acceso a finanzas/);});
