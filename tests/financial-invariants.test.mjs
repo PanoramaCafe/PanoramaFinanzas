@@ -207,7 +207,7 @@ test('regresión: el saldo de una cuenta existente no se edita directamente',()=
 });
 
 
-test('regresión: operaciones de proveedores usan RPC transaccional',()=>{
+test('regresión: nómina local usa el ledger transaccional',()=>{\n  assert.match(app,/PanoramaFinanceLedger\\.postEntry/);\n  assert.match(app,/source:'payroll'/);\n  assert.match(app,/ledgerEntryId:movementId/);\n});\ntest('regresión: pago de nómina core conserva referencia al ledger',()=>{\n  const start=app.indexOf('function openCorePayrollPayment');\n  const end=app.indexOf("window.addEventListener('panorama-core-finance-ready'",start);\n  assert.match(app.slice(start,end),/ledgerEntryId:movementId/);\n});\ntest('regresión: operaciones de proveedores usan RPC transaccional',()=>{
   assert.match(app,/PanoramaFinanceLedger\.postProviderPurchase/);
   assert.match(app,/PanoramaFinanceLedger\.postProviderPayment/);
   assert.match(app,/PanoramaFinanceLedger\.reverseProviderPurchase/);
