@@ -108,7 +108,8 @@ test('regresión: confirmación de nómina ocurre antes de descontar saldo local
 });
 
 test('regresión: pagos fijos revierten el movimiento anterior al editar un pago ya pagado', () => {
-  const start = app.indexOf("if(x){");
+  const anchor = app.indexOf("const x=form.dataset.fixedId?db.fixedPayments.find(a=>a.id===form.dataset.fixedId):null;");
+  const start = app.indexOf("if(x){", anchor);
   const end = app.indexOf("save();renderFixedPayments();closeModal();", start);
   const block = app.slice(start, end);
   assert.match(block, /const wasPaid=x\.status==='pagado'/);
