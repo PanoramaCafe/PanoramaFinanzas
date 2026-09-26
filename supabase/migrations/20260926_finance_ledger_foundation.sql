@@ -272,3 +272,61 @@ create policy finance_audit_log_access on private.finance_audit_log
 for all to authenticated
 using ((select private.has_panorama_finanzas_access()))
 with check ((select private.has_panorama_finanzas_access()));
+
+
+create or replace function private.reverse_finance_entry(p_entry_id text,p_reversal_id text,p_occurred_on date,p_reason text default 'Reversión')
+returns private.finance_ledger_entries
+language plpgsql security definer set search_path=''
+as $$
+declare v private.finance_ledger_entries; r private.finance_ledger_entries;
+begin
+  if not private.has_panorama_finanzas_access() then raise exception 'Acceso no autorizado' using errcode='42501'; end if;
+  select * into v from private.finance_ledger_entries where id=p_entry_id for update;
+  if not found then raise exception 'Movimiento no encontrado'; end if;
+  if exists(select 1 from private.finance_ledger_entries where reverses_entry_id=p_entry_id) then
+    raise exception 'El movimiento ya fue revertido';
+  end if;
+  if v.entry_type='transferencia' then
+    perform 1 from private.finance_accounts where id=v.account_id for update;
+    perform 1 from private.finance_accounts where id=v.destination_account_id for update;
+    if (select current_balance from private.finance_accounts where id=v.destination_account_id) < v.amount
+    then raise exception 'Saldo insuficiente para revertir la transferencia'; end if;
+    update private.finance_accounts set current_balance=current_balance+v.amount where id=v.account_id;
+    update private.finance_accounts set current_balance=current_balance-v.amount where id=v.destination_account_id;
+    insert into private.finance_ledger_entries
+      (id,occurred_on,entry_type,direction,amount,account_id,destination_account_id,transfer_group_id,concept,source,external_id,reverses_entry_id,metadata)
+    values(p_reversal_id,p_occurred_on,'transferencia','none',v.amount,v.destination_account_id,v.account_id,v.transfer_group_id,
+      p_reason,'reversal',null,p_entry_id,jsonb_build_object('reversalOf',p_entry_id))
+    returning * into r;
+  else
+    perform 1 from private.finance_accounts where id=v.account_id for update;
+    if v.direction='in' then
+      if (select current_balance from private.finance_accounts where id=v.account_id) < v.amount
+      then raise exception 'Saldo insuficiente para revertir la entrada'; end if;
+      update private.finance_accounts set current_balance=current_balance-v.amount where id=v.account_id;
+      insert into private.finance_ledger_entries
+        (id,occurred_on,entry_type,direction,amount,account_id,concept,category,source,reverses_entry_id,metadata)
+      values(p_reversal_id,p_occurred_on,'ajuste','out',v.amount,v.account_id,p_reason,v.category,'reversal',p_entry_id,jsonb_build_object('reversalOf',p_entry_id))
+      returning * into r;
+    else
+      update private.finance_accounts set current_balance=current_balance+v.amount where id=v.account_id;
+      insert into private.finance_ledger_entries
+        (id,occurred_on,entry_type,direction,amount,account_id,concept,category,source,reverses_entry_id,metadata)
+      values(p_reversal_id,p_occurred_on,'ajuste','in',v.amount,v.account_id,p_reason,v.category,'reversal',p_entry_id,jsonb_build_object('reversalOf',p_entry_id))
+      returning * into r;
+    end if;
+  end if;
+  insert into private.finance_audit_log(actor_user_id,action,entity_type,entity_id,before_data,after_data)
+  values(auth.uid(),'reverse','ledger_entry',p_entry_id,to_jsonb(v),to_jsonb(r));
+  return r;
+end;
+$$;
+
+create or replace function public.reverse_finance_entry(p_entry_id text,p_reversal_id text,p_occurred_on date,p_reason text default 'Reversión')
+returns private.finance_ledger_entries
+language sql security invoker set search_path=''
+as $$ select * from private.reverse_finance_entry($1,$2,$3,$4); $$;
+
+revoke all on function private.reverse_finance_entry(text,text,date,text) from public,anon,authenticated;
+revoke execute on function public.reverse_finance_entry(text,text,date,text) from public,anon;
+grant execute on function public.reverse_finance_entry(text,text,date,text) to authenticated;
