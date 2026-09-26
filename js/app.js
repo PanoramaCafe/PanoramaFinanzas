@@ -507,6 +507,7 @@ function editPayment(kind,pid){
   }
   save();closeModal();
  });
+}
 async function deletePayment(kind,pid){
  const list=kind==='provider'?db.providerPayments:db.commitmentPayments;
  const idx=list.findIndex(p=>p.id===pid);if(idx<0)return;
