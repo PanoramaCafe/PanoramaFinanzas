@@ -501,8 +501,11 @@ function deletePayment(kind,pid){
  const idx=list.findIndex(p=>p.id===pid);if(idx<0)return;
  const p=list[idx], entity=linkedEntity(kind,p), acc=getAccount(p.accountId);
  if(!confirm('¿Eliminar este pago? Se revertirá la salida financiera y el saldo pendiente.'))return;
- if(acc)acc.balance+=Number(p.amount);
- if(entity)entity.paid=Math.max(0,Number(entity.paid)-Number(p.amount));
+ if(acc)acc.balance+=Number(p.amount||0);
+ if(entity){
+   if(kind==='provider')entity.creditBalance=Number(entity.creditBalance||0)+Number(p.amount||0);
+   else entity.paid=Math.max(0,Number(entity.paid||0)-Number(p.amount||0));
+ }
  db.moves=db.moves.filter(m=>m.paymentId!==pid);
  list.splice(idx,1);
  save();
