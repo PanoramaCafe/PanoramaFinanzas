@@ -149,7 +149,7 @@ function renderDashboard(){
  document.getElementById('freeMoney').textContent=money(total-committed);
  document.getElementById('moveCount').textContent=db.moves.length;
  document.getElementById('dashboardAccounts').innerHTML=db.accounts.filter(a=>a.active!==false).map(a=>'<div class="row"><div><b>'+accountKindIcon(a)+' '+esc(a.name)+'</b><div class="muted">'+esc(accountKind(a))+'</div></div><strong>'+money(a.balance)+'</strong></div>').join('')||'<div class="empty">Sin cuentas.</div>';
- const r=db.moves.slice().sort(function(a,b){return b.created-a.created}).slice(0,6);
+ const r=db.moves.slice().sort(function(a,b){const ad=Number(a.created)||0,bd=Number(b.created)||0;if(ad&&bd)return bd-ad;return (b.date||'').localeCompare(a.date||'')||bd-ad}).slice(0,6);
  document.getElementById('dashboardMoves').innerHTML=r.map(function(m){
   const acc=getAccount(m.from||m.account);
   const sign=m.type==='salida'?'−':m.type==='entrada'?'+':'';
