@@ -118,10 +118,10 @@ test('regresión: confirmación de nómina ocurre antes de descontar saldo local
   assert.ok(debitPos > confirmPos);
 });
 
-test('regresión: pagos fijos usan exclusivamente el adaptador transaccional', () => {
-  assert.match(app, /upsertFixedPayment/);
-  assert.match(app, /payFixedPayment/);
-  assert.doesNotMatch(app, /if\(form\.id==='fixedPaymentForm'\)\{/);
+test('regresión: pagos fijos usan exclusivamente el adaptador transaccional',()=>{
+  assert.match(ledger,/upsertFixedPayment/);
+  assert.match(ledger,/payFixedPayment/);
+  assert.doesNotMatch(app,/if\(form\.id==='fixedPaymentForm'\)\{/);
 });
 
 test('regresión: eliminar transferencia revierte cuenta origen y destino', () => {
