@@ -339,6 +339,36 @@ test('regresión: el Cierre POS sólo muta saldos locales después de confirmar 
 });
 
 import { execFileSync } from 'node:child_process';
+test('regresión: sincronización financiera usa revisión compare-and-swap y no upsert ciego del estado',()=>{
+  const core=read('panorama-core-integration.js');
+  assert.match(core,/select=data,updated_at,revision/);
+  assert.match(core,/rpc\/update_panorama_finanzas_state/);
+  assert.match(core,/p_expected_revision/);
+  assert.doesNotMatch(core,/panorama_finanzas_state\\?on_conflict=id/);
+});
+
+test('regresión: caché local vacía nunca puede borrar silenciosamente un estado remoto',()=>{
+  const core=read('panorama-core-integration.js');
+  assert.match(core,/empty\(local\)&&!empty\(ack\)/);
+  assert.match(core,/empty_local_guard/);
+  assert.match(core,/panorama_finanzas_recovery_v1/);
+});
+
+test('regresión: conflicto sin ACK conserva una copia local antes de preferir la nube',()=>{
+  const core=read('panorama-core-integration.js');
+  assert.match(core,/missing_ack/);
+  assert.match(core,/boot_preserve_local/);
+});
+
+test('regresión: el estado financiero tiene respaldo histórico antes de cada actualización',()=>{
+  const migration=read('supabase/migrations/20260926170001_harden_finance_cloud_state_v2.sql');
+  assert.match(migration,/finance_state_backups/);
+  assert.match(migration,/trg_backup_finance_state/);
+  assert.match(migration,/old\.data/);
+  assert.match(migration,/old\.revision/);
+  assert.match(migration,/revision = p_expected_revision/);
+});
+
 test('sintaxis: app.js debe compilar como JavaScript válido',()=>{
   execFileSync(process.execPath,['--check','js/app.js'],{stdio:'pipe'});
 });
