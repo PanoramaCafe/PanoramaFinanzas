@@ -65,7 +65,7 @@ test('la recepción remota del módulo UI no reemplaza directamente el estado',(
 
 test('el motor Core valida antes de escribir al estado remoto',()=>{
   assert.match(core,/PanoramaFinanceIntegrity\?\.validate\(data/);
-  assert.match(core,/authHeaders\(\),Prefer:'resolution=merge-duplicates/);
+  assert.match(core,/authHeaders\(\),Prefer:'resolution=merge-duplicates/);\n  assert.match(core,/const deleted=\[\]/);\n  assert.match(core,/if\(!old\)\{meta\[id\]=clone\(v\);continue\}/);
   assert.doesNotMatch(core,/headers:\{\.\.\.H,Prefer:/);
 });
 
@@ -74,4 +74,19 @@ test('eventos externos registran el evento antes de mutar el saldo',()=>{
   const end=app.indexOf('\nfunction openAccount',start);
   const block=app.slice(start,end);
   assert.ok(block.indexOf('const id=registerIntegrationEvent(p)')<block.indexOf('if(direction===\'out\')acc.balance-=amount'));
+});
+
+test('merge de cuentas nuevas conserva su saldo',()=>{
+  const start=core.indexOf('function accountChanges');
+  const end=core.indexOf('function merge',start);
+  const block=core.slice(start,end);
+  assert.match(block,/if\(!old\)\{meta\[id\]=clone\(v\);continue\}/);
+});
+
+test('merge de cuentas eliminadas elimina el registro remoto',()=>{
+  assert.match(core,/for\(const id of ac\.deleted\)am\.delete\(id\)/);
+});
+
+test('eventos de integración participan en el merge como colección',()=>{
+  assert.match(core,/loyverseTreasuryExpenses','integrationEvents/);
 });
