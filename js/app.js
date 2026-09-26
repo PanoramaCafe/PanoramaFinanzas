@@ -175,8 +175,8 @@ function openMovementDetail(id){
 }
 function editMovement(id){
  const m=(db.moves||[]).find(x=>x.id===id);if(!m)return;
+ if(m.ledgerEntryId){alert('Este movimiento ya pertenece al libro financiero. Para mantener el historial inmutable, elimínalo y registra uno nuevo en lugar de editarlo.');return}
  if(m.type==='transferencia'){alert('Las transferencias no se editan directamente. Elimínala y registra una nueva para mantener ambos saldos sincronizados.');return}
- // Imported/linked records must be edited from their source module to avoid breaking reconciliation.
  if(m.linkedType==='providerPurchase'){editProviderPurchase(m.linkedId);return}
  if(m.linkedType==='provider'){editPayment('provider',m.paymentId||m.linkedId);return}
  if(m.linkedType==='commitment'){editPayment('commitment',m.paymentId||m.linkedId);return}
@@ -200,26 +200,18 @@ function editMovement(id){
   const d=new FormData(f),amount=Number(d.get('amount')),newType=String(d.get('type')),newAcc=getAccount(d.get('account')),oldAcc=getAccount(m.account||m.from);
   if(!Number.isFinite(amount)||amount<=0){alert('El importe no es válido.');return}
   if(!newAcc){alert('Selecciona una cuenta válida.');return}
-  // Revert old balance, then validate/apply the new balance.
   if(m.type==='entrada'){if(oldAcc)oldAcc.balance-=Number(m.amount||0)}
   else if(m.type==='salida'||m.type==='compra_credito'){if(oldAcc)oldAcc.balance+=Number(m.amount||0)}
-  if(newType==='entrada'){
-   newAcc.balance+=amount;
-  }else if(newType==='salida'){
-   if(newAcc.id!==oldAcc?.id && Number(newAcc.balance)<amount){
-    if(m.type==='entrada'){if(oldAcc)oldAcc.balance+=Number(m.amount||0)}else if(oldAcc)oldAcc.balance-=Number(m.amount||0);
-    alert('La cuenta no tiene saldo suficiente.');return;
-   }
-   if(newAcc.id===oldAcc?.id && Number(newAcc.balance)<amount){ // balance currently includes old amount
-    alert('La cuenta no tiene saldo suficiente.');if(m.type==='entrada')oldAcc.balance+=Number(m.amount||0);else oldAcc.balance-=Number(m.amount||0);return;
-   }
+  if(newType==='entrada')newAcc.balance+=amount;
+  else if(newType==='salida'){
+   if(Number(newAcc.balance)<amount){if(oldAcc&&m.type==='entrada')oldAcc.balance+=Number(m.amount||0);else if(oldAcc)oldAcc.balance-=Number(m.amount||0);alert('La cuenta no tiene saldo suficiente.');return}
    newAcc.balance-=amount;
   }
   m.date=String(d.get('date'));m.type=newType;m.amount=amount;m.account=newAcc.id;m.from=newAcc.id;m.category=String(d.get('category'));m.concept=String(d.get('concept'));m.note=String(d.get('note')||'');
   save();renderMoves();closeModal();
  });
 }
-function deleteMovement(id){
+async function deleteMovement(id){
  const m=(db.moves||[]).find(x=>x.id===id);if(!m)return;
  if(m.linkedType==='providerPurchase'){deleteProviderPurchase(m.linkedId);return}
  if(m.linkedType==='provider'){alert('Este pago debe eliminarse desde Proveedores para revertir también la deuda.');return}
@@ -227,18 +219,17 @@ function deleteMovement(id){
  if(m.linkedType==='loyverseTreasury'){alert('Esta salida proviene de Loyverse. Elimínala desde Salidas de tesorería Loyverse para revertir correctamente la cuenta.');return}
  if(m.linkedType){alert('Este movimiento está vinculado a otro módulo. Elimínalo desde su registro de origen.');return}
  if(!confirm('¿Eliminar este movimiento? Se revertirá su efecto sobre la cuenta.'))return;
+ if(m.ledgerEntryId){
+  try{await window.PanoramaFinanceLedger.reverse({id:m.ledgerEntryId,reversalId:uid(),date:today(),reason:'Reversión: '+(m.concept||'Movimiento')});}
+  catch(err){console.error(err);alert('No se pudo revertir el movimiento en el libro financiero.\n\n'+err.message);return}
+ }
  const acc=getAccount(m.account||m.from);
  if(m.type==='entrada'){if(acc)acc.balance-=Number(m.amount||0)}
  else if(m.type==='salida'||m.type==='compra_credito'){if(acc)acc.balance+=Number(m.amount||0)}
- else if(m.type==='transferencia'){
-  const to=getAccount(m.to);
-  if(acc)acc.balance+=Number(m.amount||0);
-  if(to)to.balance-=Number(m.amount||0);
- }
+ else if(m.type==='transferencia'){const to=getAccount(m.to);if(acc)acc.balance+=Number(m.amount||0);if(to)to.balance-=Number(m.amount||0)}
  db.moves=db.moves.filter(x=>x.id!==id);
  save();renderMoves();
 }
-
 
 function renderAccounts(){
  const body=document.getElementById('accountsBody');
