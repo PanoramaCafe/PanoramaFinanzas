@@ -146,6 +146,14 @@ test('regresión: las transferencias no se editan parcialmente', () => {
   assert.match(block, /Las transferencias no se editan directamente/);
 });
 
+test('regresión: Loyverse no puede crear una salida con saldo insuficiente', () => {
+  const start = app.indexOf('function importLoyverseTreasuryExpense');
+  const end = app.indexOf('\nfunction openLoyverseTreasuryImportTest', start);
+  const block = app.slice(start, end);
+  assert.match(block, /Number\(acc\.balance\)<amount/);
+  assert.match(block, /La cuenta seleccionada no tiene saldo suficiente/);
+});
+
 test('regresión: pagos externos de nómina requieren referencia y no se duplican', () => {
   assert.match(app, /origin==='external'&&\!externalId/);
   assert.match(app, /db\.payrollPeriods\.some\(x=>String\(x\.externalId\|\|''\)===externalId\)/);
