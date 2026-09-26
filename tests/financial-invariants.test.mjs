@@ -237,3 +237,20 @@ test('regresión: el submit de pagos fijos confirma PostgreSQL antes de mutar el
 test('regresión: pagos fijos pagados no reutilizan el registro después de reversión',()=>{
   assert.match(ledger,/existing\.status==='pagado'\|\|existing\.status==='revertido'/);
 });
+
+
+test('regresión: Loyverse Treasury usa el ledger transaccional',()=>{
+  assert.match(ledger,/postLoyverseTreasuryExpense/);
+  assert.match(ledger,/reverseLoyverseTreasuryExpense/);
+  assert.match(app,/await window\.PanoramaFinanceLedger\.postLoyverseTreasuryExpense/);
+  assert.match(app,/await window\.PanoramaFinanceLedger\.reverseLoyverseTreasuryExpense/);
+  assert.match(app,/ledgerEntryId:rec\.id/);
+});
+
+test('regresión: registros legacy de Loyverse no se eliminan como si fueran ledger',()=>{
+  const start=app.indexOf("document.querySelectorAll('[data-del-loy-treasury]')");
+  const end=app.indexOf("function renderResult()",start);
+  const block=app.slice(start,end);
+  assert.match(block,/!x\.ledgerEntryId/);
+  assert.match(block,/anterior al libro transaccional/);
+});
