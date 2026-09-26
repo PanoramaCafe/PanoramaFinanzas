@@ -65,6 +65,32 @@ function save(options={}){
   return true;
 }
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
+const PENDING_LEDGER='panorama_finanzas_pending_ledger_v1';
+function getPendingLedger(){try{return JSON.parse(localStorage.getItem(PENDING_LEDGER)||'null')}catch{return null}}
+function setPendingLedger(op){localStorage.setItem(PENDING_LEDGER,JSON.stringify(op))}
+function clearPendingLedger(id){const p=getPendingLedger();if(!id||!p||p.id===id)localStorage.removeItem(PENDING_LEDGER)}
+async function recoverPendingLedgerOperation(){
+ const op=getPendingLedger();
+ if(!op||!window.PanoramaFinanceLedger||!window.PanoramaAuth?.session)return;
+ if((db.moves||[]).some(m=>m.id===op.id)){clearPendingLedger(op.id);return}
+ try{
+  if(op.kind==='transferencia'){
+   await window.PanoramaFinanceLedger.transfer(op.payload);
+   const from=getAccount(op.payload.fromAccountId),to=getAccount(op.payload.toAccountId);
+   if(!from||!to)throw new Error('No se encontraron las cuentas de la transferencia pendiente.');
+   from.balance-=Number(op.payload.amount);to.balance+=Number(op.payload.amount);
+   db.moves.push(op.move);
+   if(save({accountIds:[from.id,to.id]}))clearPendingLedger(op.id);
+  }else{
+   await window.PanoramaFinanceLedger.postEntry(op.payload);
+   const acc=getAccount(op.payload.accountId);
+   if(!acc)throw new Error('No se encontró la cuenta del movimiento pendiente.');
+   if(op.payload.type==='salida')acc.balance-=Number(op.payload.amount);else acc.balance+=Number(op.payload.amount);
+   db.moves.push(op.move);
+   if(save({accountIds:[acc.id]}))clearPendingLedger(op.id);
+  }
+ }catch(err){console.warn('Panorama Finanzas: no se pudo recuperar la operación pendiente',err)}
+}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]})}
 function money(n){return new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN'}).format(Number(n)||0)}
 function today(){return new Date().toISOString().slice(0,10)}
@@ -470,12 +496,15 @@ function openMovement(type){
     if(retry&&!retry.ok){alert('No se puede registrar la transferencia porque la caché financiera local está inconsistente. Se detuvo antes de tocar el libro financiero.\n\n'+retry.errors.slice(0,5).join('\n'));return}
    }
    try{
-    await window.PanoramaFinanceLedger.transfer({id,date:f.get('date'),amount:amt,fromAccountId:from.id,toAccountId:to.id,concept:'Transferencia',metadata:{note:f.get('note')||''}});
+    const payload={id,date:f.get('date'),amount:amt,fromAccountId:from.id,toAccountId:to.id,concept:'Transferencia',metadata:{note:f.get('note')||''}};
+    const move={id,ledgerEntryId:id,created:Date.now(),origin:'manual',type:'transferencia',date:f.get('date'),amount:amt,concept:'Transferencia',category:'',from:from.id,to:to.id,account:from.id,note:f.get('note')||''};
+    setPendingLedger({id,kind:'transferencia',payload,move});
+    await window.PanoramaFinanceLedger.transfer(payload);
     from.balance-=amt;to.balance+=amt;
-    db.moves.push({id,ledgerEntryId:id,created:Date.now(),origin:'manual',type:'transferencia',date:f.get('date'),amount:amt,concept:'Transferencia',category:'',from:from.id,to:to.id,account:from.id,note:f.get('note')||''});
-    if(save({accountIds:[from.id,to.id]}))closeModal();
+    db.moves.push(move);
+    if(save({accountIds:[from.id,to.id]})){clearPendingLedger(id);closeModal();}
     else{
-      try{await window.PanoramaFinanceLedger.reverse({id,reversalId:uid(),date:today(),reason:'Rollback: fallo al guardar estado compatible'});}catch(rollbackErr){console.error('FALLO CRÍTICO: no se pudo revertir la transferencia tras fallo de estado',rollbackErr);alert('El libro financiero registró la transferencia, pero el estado compatible no pudo guardarse y tampoco se pudo revertir automáticamente. No vuelvas a intentarlo; requiere conciliación.');return}
+      try{await window.PanoramaFinanceLedger.reverse({id,reversalId:uid(),date:today(),reason:'Rollback: fallo al guardar estado compatible'});clearPendingLedger(id);}catch(rollbackErr){console.error('FALLO CRÍTICO: no se pudo revertir la transferencia tras fallo de estado',rollbackErr);alert('El libro financiero registró la transferencia, pero el estado compatible no pudo guardarse y tampoco se pudo revertir automáticamente. No vuelvas a intentarlo; requiere conciliación.');return}
     }
    }catch(err){console.error(err);alert('No se pudo registrar la transferencia en el libro financiero.\n\n'+err.message)}
   });return;
@@ -501,12 +530,15 @@ function openMovement(type){
    if(retry&&!retry.ok){alert('No se puede registrar esta entrada/salida porque la caché financiera local está inconsistente. Se detuvo antes de tocar el libro financiero.\n\n'+retry.errors.slice(0,5).join('\n'));return}
   }
   try{
-   await window.PanoramaFinanceLedger.postEntry({id,date:f.get('date'),type:isOut?'salida':'entrada',amount,accountId:acc.id,concept:f.get('note')||(isOut?'Salida manual':'Entrada manual'),category:f.get('category')||null,source:origin,externalId:externalId||null});
+   const payload={id,date:f.get('date'),type:isOut?'salida':'entrada',amount,accountId:acc.id,concept:f.get('note')||(isOut?'Salida manual':'Entrada manual'),category:f.get('category')||null,source:origin,externalId:externalId||null};
+   const move={id,ledgerEntryId:id,created:Date.now(),origin,externalId,type:isOut?'salida':'entrada',date:f.get('date'),amount,concept:f.get('note')|| (isOut?'Salida manual':'Entrada manual'),category:f.get('category')||'',from:isOut?acc.id:null,to:isOut?null:acc.id,account:acc.id,note:f.get('note')||''};
+   setPendingLedger({id,kind:'movimiento',payload,move});
+   await window.PanoramaFinanceLedger.postEntry(payload);
    if(isOut)acc.balance-=amount;else acc.balance+=amount;
-   db.moves.push({id,ledgerEntryId:id,created:Date.now(),origin,externalId,type:isOut?'salida':'entrada',date:f.get('date'),amount,concept:f.get('note')|| (isOut?'Salida manual':'Entrada manual'),category:f.get('category')||'',from:isOut?acc.id:null,to:isOut?null:acc.id,account:acc.id,note:f.get('note')||''});
-   if(save({accountIds:[acc.id]}))closeModal();
+   db.moves.push(move);
+   if(save({accountIds:[acc.id]})){clearPendingLedger(id);closeModal();}
    else{
-    try{await window.PanoramaFinanceLedger.reverse({id,reversalId:uid(),date:today(),reason:'Rollback: fallo al guardar estado compatible'});}catch(rollbackErr){console.error('FALLO CRÍTICO: no se pudo revertir el movimiento tras fallo de estado',rollbackErr);alert('El libro financiero registró el movimiento, pero el estado compatible no pudo guardarse y tampoco se pudo revertir automáticamente. No vuelvas a intentarlo; requiere conciliación.');return}
+    try{await window.PanoramaFinanceLedger.reverse({id,reversalId:uid(),date:today(),reason:'Rollback: fallo al guardar estado compatible'});clearPendingLedger(id);}catch(rollbackErr){console.error('FALLO CRÍTICO: no se pudo revertir el movimiento tras fallo de estado',rollbackErr);alert('El libro financiero registró el movimiento, pero el estado compatible no pudo guardarse y tampoco se pudo revertir automáticamente. No vuelvas a intentarlo; requiere conciliación.');return}
    }
   }catch(err){console.error(err);alert('No se pudo registrar el movimiento en el libro financiero.\n\n'+err.message)}
  });
@@ -1206,8 +1238,8 @@ if(sidebar){
     finally{pullBusy=false}
   }
 
-  window.addEventListener('panorama-core-finance-ready',function(){renderAll();pullRemoteStateSafe();});
-  window.addEventListener('panorama-auth-ready',function(){renderAll();pullRemoteStateSafe();});
+  window.addEventListener('panorama-core-finance-ready',function(){renderAll();pullRemoteStateSafe();recoverPendingLedgerOperation();});
+  window.addEventListener('panorama-auth-ready',function(){renderAll();pullRemoteStateSafe();recoverPendingLedgerOperation();});
   window.addEventListener('panorama-finanzas-reload',function(){renderAll();});
   window.addEventListener('panorama-finanzas-sync',function(ev){if(ev.detail?.status==='synced')renderAll();});
   renderAll();
