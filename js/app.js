@@ -457,6 +457,7 @@ function editPayment(kind,pid){
  const list=kind==='provider'?db.providerPayments:db.commitmentPayments;
  const p=findPayment(kind,pid), entity=linkedEntity(kind,p);
  if(!p||!entity)return;
+ if(p.ledgerEntryId){alert('Este pago ya está contabilizado en el libro financiero. Para corregirlo, reviértelo y registra uno nuevo.');return;}
  const currentAmount=Number(p.amount||0);
  const currentPaid=kind==='provider'
    ?Number(entity.creditBalance||0)
@@ -1079,8 +1080,8 @@ function openCategory(type,editId){
  document.getElementById('categoryForm').addEventListener('submit',function(e){e.preventDefault();const f=new FormData(e.target),name=f.get('name').trim(),t=editId?type:f.get('type');if(!name)return;if(editId)existing.name=name;else db.categories[t].push({id:uid(),name:name,active:true});save();closeModal()});
 }
 function toggleCategory(type,i){const c=getCategory(type,i);if(c){c.active=!c.active;save()}}
-function deleteProvider(i){if(confirm('¿Eliminar proveedor?')){db.providers=db.providers.filter(x=>x.id!==i);save()}}
-function deleteCommitment(i){if(confirm('¿Eliminar compromiso?')){db.commitments=db.commitments.filter(x=>x.id!==i);save()}}
+function deleteProvider(i){const p=db.providers.find(x=>x.id===i);if(!p)return;const hasPurchases=(db.providerPurchases||[]).some(x=>x.providerId===i)|| (db.moves||[]).some(x=>x.linkedType==='providerPurchase'&&x.linkedId===i);const hasPayments=(db.providerPayments||[]).some(x=>x.providerId===i)|| (db.moves||[]).some(x=>x.linkedType==='provider'&&x.linkedId===i);if(hasPurchases||hasPayments||Number(p.creditBalance||0)>0){alert('Este proveedor tiene operaciones financieras o saldo pendiente. No puede eliminarse directamente. Revierte/normaliza sus operaciones y después podrás retirarlo.');return}if(confirm('¿Eliminar proveedor?')){db.providers=db.providers.filter(x=>x.id!==i);save()}}
+function deleteCommitment(i){const c=db.commitments.find(x=>x.id===i);if(!c)return;const hasPayments=(db.commitmentPayments||[]).some(x=>x.commitmentId===i)|| (db.moves||[]).some(x=>x.linkedType==='commitment'&&x.linkedId===i);if(hasPayments||Number(c.paid||0)>0||c.ledgerCommitmentId){alert('Este compromiso está registrado en el libro financiero o tiene pagos. No puede eliminarse directamente. Reviértelo/archívalo desde su flujo financiero.');return}if(confirm('¿Eliminar compromiso?')){db.commitments=db.commitments.filter(x=>x.id!==i);save()}}
 function deleteMove(i){
  const m=db.moves.find(x=>x.id===i);if(!m)return;
  if(!confirm('¿Eliminar este movimiento? El saldo será revertido.'))return;
