@@ -448,11 +448,17 @@ function editPayment(kind,pid){
  const list=kind==='provider'?db.providerPayments:db.commitmentPayments;
  const p=findPayment(kind,pid), entity=linkedEntity(kind,p);
  if(!p||!entity)return;
- const otherPaid=Math.max(0,Number(entity.paid||0)-Number(p.amount||0));
+ const currentAmount=Number(p.amount||0);
+ const currentPaid=kind==='provider'
+   ?Number(entity.creditBalance||0)
+   :Number(entity.paid||0);
+ const basePaid=kind==='provider'
+   ?currentPaid+currentAmount
+   :Math.max(0,currentPaid-currentAmount);
  openModal('<h2>Editar pago</h2><div class="notice"><b>'+esc(entity.name)+'</b><br>Este cambio corregirá también el movimiento financiero.</div>'+
  '<form id="editPaymentForm"><div class="formGrid">'+
  '<div class="field"><label>Fecha</label><input class="input" name="date" type="date" value="'+esc(p.date)+'" required></div>'+
- '<div class="field"><label>Importe</label><input class="input" name="amount" type="number" min="0.01" step="0.01" value="'+Number(p.amount)+'" required></div>'+
+ '<div class="field"><label>Importe</label><input class="input" name="amount" type="number" min="0.01" step="0.01" value="'+currentAmount+'" required></div>'+
  '<div class="field"><label>Cuenta / caja</label><select class="select" name="account">'+accountOptions()+'</select></div>'+
  '<div class="field"><label>Nota</label><input class="input" name="note" value="'+esc(p.note||'')+'"></div>'+
  '</div><div class="modalActions"><button type="button" class="btn" id="cancelModal">Cancelar</button><button class="btn primary">Guardar cambios</button></div></form>');
@@ -461,25 +467,35 @@ function editPayment(kind,pid){
  document.getElementById('editPaymentForm').addEventListener('submit',function(e){
   e.preventDefault();
   const f=new FormData(e.target), amount=Number(f.get('amount')), newAcc=getAccount(f.get('account')), oldAcc=getAccount(p.accountId);
-  if(amount<=0||!newAcc||!oldAcc){alert('Revisa importe y cuenta.');return}
-  if(amount>otherPaid+amount && false)return;
-  // Restore old payment effect first.
-  if(oldAcc) oldAcc.balance+=Number(p.amount);
-  entity.paid=otherPaid;
-  // Then apply new payment effect.
-  if(newAcc.id!==oldAcc.id && newAcc.balance<amount){oldAcc.balance-=Number(p.amount);entity.paid+=Number(p.amount);alert('La nueva cuenta no tiene saldo suficiente.');return}
-  if(newAcc.balance<amount){oldAcc.balance-=Number(p.amount);entity.paid+=Number(p.amount);alert('La cuenta no tiene saldo suficiente para ese pago.');return}
+  if(!Number.isFinite(amount)||amount<=0||!newAcc||!oldAcc){alert('Revisa importe y cuenta.');return}
+  if(kind==='commitment'&&amount>basePaid){alert('El nuevo pago supera el saldo pendiente del compromiso.');return}
+
+  // Roll back the current payment completely, then apply the edited payment.
+  oldAcc.balance+=currentAmount;
+  if(kind==='provider')entity.creditBalance=basePaid;
+  else entity.paid=basePaid;
+
+  if(Number(newAcc.balance)<amount){
+    oldAcc.balance-=currentAmount;
+    if(kind==='provider')entity.creditBalance=basePaid-currentAmount;
+    else entity.paid=basePaid;
+    alert('La cuenta no tiene saldo suficiente para ese pago.');
+    return;
+  }
+
   newAcc.balance-=amount;
-  entity.paid+=amount;
+  if(kind==='provider')entity.creditBalance=basePaid-amount;
+  else entity.paid=basePaid+amount;
+
   p.amount=amount;p.accountId=newAcc.id;p.date=f.get('date');p.note=f.get('note');
-  const mv=db.moves.find(m=>m.linkedType===kind&&m.linkedId===entity.id&&m.amount===Number(document.querySelector('#editPaymentForm input[name="amount"]').defaultValue));
-  // Match the linked movement by payment metadata stored below; fall back to latest matching movement.
   let linked=db.moves.find(m=>m.paymentId===p.id);
-  if(!linked) linked=db.moves.slice().reverse().find(m=>m.linkedType===kind&&m.linkedId===entity.id&&m.type==='salida');
-  if(linked){linked.amount=amount;linked.account=newAcc.id;linked.from=newAcc.id;linked.date=p.date;linked.note=p.note;linked.concept='Pago — '+entity.name}
+  if(!linked)linked=db.moves.slice().reverse().find(m=>m.linkedType===kind&&m.linkedId===entity.id&&m.type==='salida'&&Number(m.amount)===currentAmount);
+  if(linked){
+    linked.amount=amount;linked.account=newAcc.id;linked.from=newAcc.id;
+    linked.date=p.date;linked.note=p.note;linked.concept='Pago — '+entity.name;
+  }
   save();closeModal();
  });
-}
 function deletePayment(kind,pid){
  const list=kind==='provider'?db.providerPayments:db.commitmentPayments;
  const idx=list.findIndex(p=>p.id===pid);if(idx<0)return;
