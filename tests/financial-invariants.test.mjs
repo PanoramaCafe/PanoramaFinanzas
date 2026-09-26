@@ -175,8 +175,12 @@ test('regresión: movimientos manuales nuevos usan el ledger transaccional',()=>
   assert.match(app,/ledgerEntryId:id/);
   assert.match(app,/PanoramaFinanceLedger\.transfer/);
 });
-test('regresión: movimientos del ledger no se editan directamente',()=>{
-  assert.match(app,/if\(m\.ledgerEntryId\)\{alert\('Este movimiento ya pertenece al libro financiero/);
+test('regresión: movimientos no ledger no se editan directamente',()=>{
+  const start=app.indexOf('function editMovement');
+  const end=app.indexOf('function deleteMovement',start);
+  const block=app.slice(start,end);
+  assert.match(block,/!m\.ledgerEntryId/);
+  assert.match(block,/no está vinculado al libro financiero/);
 });
 test('regresión: movimientos legacy sin ledger no pueden eliminarse directamente',()=>{
   const start=app.indexOf('async function deleteMovement');
@@ -222,6 +226,11 @@ test('regresión: pago de nómina core conserva referencia al ledger',()=>{
   const start=app.indexOf('function openCorePayrollPayment');
   const end=app.indexOf("window.addEventListener('panorama-core-finance-ready'",start);
   assert.match(app.slice(start,end),/ledgerEntryId:movementId/);
+});
+test('regresión: pagos de compromiso usan ledger y reversión transaccional',()=>{
+ assert.match(app,/PanoramaFinanceLedger\.postCommitmentPayment/);
+ assert.match(app,/PanoramaFinanceLedger\.reverseCommitmentPayment/);
+ assert.match(app,/ledgerEntryId:id/);
 });
 test('regresión: pagos de proveedor o compromiso ya contabilizados no se editan directamente',()=>{
   const start=app.indexOf('function editPayment');
