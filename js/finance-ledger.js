@@ -22,6 +22,11 @@
   }
   async function reverse({id,reversalId,date,reason='Reversión'}){ return rpc('reverse_finance_entry',{p_entry_id:String(id),p_reversal_id:String(reversalId),p_occurred_on:date,p_reason:String(reason)}); }
   async function adjustBalance({id,date,accountId,targetBalance,reason,metadata={}}){ return rpc('adjust_finance_account_balance',{p_entry_id:String(id),p_occurred_on:date,p_account_id:String(accountId),p_target_balance:Number(targetBalance),p_reason:String(reason),p_metadata:metadata}); }
+  async function upsertProvider({id,name,paymentType,note=''}){ return rpc('upsert_finance_provider',{p_provider_id:String(id),p_name:String(name),p_payment_type:String(paymentType),p_note:String(note)}); }
+  async function postProviderPurchase({id,date,providerId,amount,mode,accountId=null,note=''}){ return rpc('post_provider_purchase',{p_purchase_id:String(id),p_occurred_on:date,p_provider_id:String(providerId),p_amount:Number(amount),p_mode:String(mode),p_account_id:accountId?String(accountId):null,p_note:String(note)}); }
+  async function postProviderPayment({id,date,providerId,amount,accountId,note=''}){ return rpc('post_provider_payment',{p_payment_id:String(id),p_occurred_on:date,p_provider_id:String(providerId),p_amount:Number(amount),p_account_id:String(accountId),p_note:String(note)}); }
+  async function reverseProviderPurchase({id,reversalId,reason='Reversión de compra'}){ return rpc('reverse_provider_purchase',{p_purchase_id:String(id),p_reversal_id:String(reversalId),p_reason:String(reason)}); }
+  async function reverseProviderPayment({id,reversalId,reason='Reversión de pago'}){ return rpc('reverse_provider_payment',{p_payment_id:String(id),p_reversal_id:String(reversalId),p_reason:String(reason)}); }
   async function transfer({id,date,amount,fromAccountId,toAccountId,concept,source='manual',externalId=null,metadata={}}){
     return rpc('post_finance_transfer',{
       p_entry_id:String(id),p_occurred_on:date,p_amount:Number(amount),
@@ -29,5 +34,5 @@
       p_concept:String(concept),p_source:String(source),p_external_id:externalId,p_metadata:metadata
     });
   }
-  window.PanoramaFinanceLedger={postEntry,transfer,reverse,adjustBalance};
+  window.PanoramaFinanceLedger={postEntry,transfer,reverse,adjustBalance,upsertProvider,postProviderPurchase,postProviderPayment,reverseProviderPurchase,reverseProviderPayment};
 })();
